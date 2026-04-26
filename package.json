@@ -15,6 +15,7 @@
     "format": "oxfmt src/"
   },
   "dependencies": {
+    "@primeuix/themes": "^2.0.3",
     "@supabase/supabase-js": "^2.104.1",
     "primevue": "^4.5.5",
     "qrcode": "^1.5.4",
