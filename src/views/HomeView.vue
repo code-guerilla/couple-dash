@@ -1,45 +1,73 @@
+<script setup lang="ts">
+import Card from 'primevue/card'
+import Tag from 'primevue/tag'
+import { useDashboardStore } from '@/composables/useDashboardStore'
+import { isSupabaseConfigured } from '@/services/supabase'
+
+const { couples } = useDashboardStore()
+</script>
+
 <template>
-  <section class="space-y-6">
-    <div class="hero rounded-box bg-base-100 shadow-sm">
-      <div class="hero-content w-full justify-start p-8">
-        <div class="max-w-2xl">
-          <p class="badge badge-primary badge-soft mb-4">Fresh start</p>
-          <h1 class="text-4xl font-bold tracking-tight">Build your shared dashboard here</h1>
-          <p class="mt-4 text-base-content/70">
-            The Vue starter template is gone. This page is ready for your couple dashboard features,
-            using Tailwind CSS and DaisyUI components from the start.
-          </p>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <button class="btn btn-primary">Add first widget</button>
-            <button class="btn btn-outline">Plan layout</button>
-          </div>
-        </div>
-      </div>
+  <section class="mx-auto max-w-5xl space-y-8">
+    <div class="space-y-4">
+      <Tag severity="info" value="Multi tenant couple dashboards" />
+      <h1 class="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">
+        A tiny always-on command center for wedding-grade household operations.
+      </h1>
+      <p class="max-w-2xl text-lg muted">
+        Private couple dashboards are loaded only after a partner, display, or app admin session is authenticated.
+      </p>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-      <article class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title">Shared Tasks</h2>
-          <p class="text-base-content/70">Track recurring chores, errands, and household todos.</p>
-        </div>
-      </article>
+    <div v-if="isSupabaseConfigured" class="grid gap-4 md:grid-cols-3">
+      <RouterLink class="link-card" to="/admin">
+        <Card>
+          <template #title>Admin</template>
+          <template #content><p class="muted">Sign in and verify app_admin access.</p></template>
+        </Card>
+      </RouterLink>
+      <Card>
+        <template #title>Display</template>
+        <template #content><p class="muted">Open a private /display/:slug URL and claim it with the display token.</p></template>
+      </Card>
+      <Card>
+        <template #title>Partner</template>
+        <template #content><p class="muted">Partners use /invite links once, then /edit/:slug with Supabase Auth.</p></template>
+      </Card>
+    </div>
 
-      <article class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title">Calendar</h2>
-          <p class="text-base-content/70">Keep upcoming dates and plans visible in one place.</p>
-        </div>
-      </article>
-
-      <article class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title">Budget</h2>
-          <p class="text-base-content/70">
-            Add shared expenses, savings goals, or monthly summaries.
-          </p>
-        </div>
-      </article>
+    <div v-else class="grid gap-4 md:grid-cols-2">
+      <RouterLink
+        v-for="couple in couples"
+        :key="couple.id"
+        class="link-card"
+        :to="{ name: 'display', params: { coupleSlug: couple.slug } }"
+      >
+        <Card>
+          <template #title>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 class="text-3xl font-black">{{ couple.name }}</h2>
+                <p class="mt-1 text-base font-normal muted">{{ couple.subtitle }}</p>
+              </div>
+              <Tag severity="success" value="Production" />
+            </div>
+          </template>
+          <template #content>
+            <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
+              <div class="soft-panel p-3">
+                <p class="muted">Wedding</p>
+                <p class="font-bold">{{ new Date(couple.weddingDate).toLocaleDateString() }}</p>
+              </div>
+              <div class="soft-panel p-3">
+                <p class="muted">Partners</p>
+                <p class="font-bold">{{ couple.partners.map((partner) => partner.name).join(' + ') }}</p>
+              </div>
+            </div>
+          </template>
+        </Card>
+      </RouterLink>
     </div>
   </section>
 </template>
+

@@ -1,0 +1,266 @@
+import type { Couple, CoupleAlert, DashboardState, DashboardWidget } from '@/types'
+
+const now = new Date().toISOString()
+
+export const defaultCouples: Couple[] = [
+  {
+    id: 'couple-paul-anna',
+    slug: 'paul-anna',
+    name: 'Paul + Anna',
+    subtitle: 'Kitchen table production environment',
+    relationshipStart: '2018-04-04',
+    weddingDate: '2026-08-22',
+    anniversaryDate: '2027-08-22',
+    theme: 'night',
+    partners: [
+      {
+        id: 'partner-paul',
+        slug: 'paul',
+        name: 'Paul',
+        role: 'SnackOps lead',
+        accent: 'primary',
+      },
+      {
+        id: 'partner-anna',
+        slug: 'anna',
+        name: 'Anna',
+        role: 'Mood reliability engineer',
+        accent: 'secondary',
+      },
+    ],
+  },
+  {
+    id: 'couple-lina-tom',
+    slug: 'lina-tom',
+    name: 'Lina + Tom',
+    subtitle: 'Home happiness control plane',
+    relationshipStart: '2020-10-17',
+    weddingDate: '2026-09-12',
+    anniversaryDate: '2027-09-12',
+    theme: 'night',
+    partners: [
+      {
+        id: 'partner-lina',
+        slug: 'lina',
+        name: 'Lina',
+        role: 'Calendar incident commander',
+        accent: 'accent',
+      },
+      {
+        id: 'partner-tom',
+        slug: 'tom',
+        name: 'Tom',
+        role: 'Coffee dependency manager',
+        accent: 'info',
+      },
+    ],
+  },
+]
+
+const widget = (
+  coupleId: string,
+  id: string,
+  label: string,
+  value: string,
+  detail: string,
+  order: number,
+  options: Partial<DashboardWidget> = {},
+): DashboardWidget => ({
+  id: `${coupleId}-${id}`,
+  coupleId,
+  label,
+  value,
+  detail,
+  scope: 'shared',
+  visual: 'stat',
+  order,
+  tone: 'info',
+  visible: true,
+  updatedAt: now,
+  ...options,
+})
+
+export const defaultWidgets: DashboardWidget[] = [
+  widget('couple-paul-anna', 'uptime', 'Relationship Uptime', '8y 22d', 'No known outages since launch.', 1, {
+    tone: 'success',
+    visual: 'stat',
+  }),
+  widget('couple-paul-anna', 'anniversary', 'Days Until 2nd Anniversary', '200', 'Romance calendar is warming up.', 2, {
+    unit: 'days',
+    visual: 'radial',
+    numericValue: 45,
+    max: 100,
+    tone: 'info',
+  }),
+  widget('couple-paul-anna', 'commitment', 'Commitment Level', '100', 'Permanent contract signed emotionally.', 3, {
+    unit: '%',
+    visual: 'progress',
+    numericValue: 100,
+    max: 100,
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'sla', 'Love SLA', '99.999', 'Measured over all couch deployments.', 4, {
+    unit: '%',
+    visual: 'progress',
+    numericValue: 99,
+    max: 100,
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'memories', 'Shared Memories Indexed', '186', 'Photos, trips, tiny jokes, and excellent meals.', 5, {
+    visual: 'stat',
+    tone: 'info',
+  }),
+  widget('couple-paul-anna', 'status', 'Current Couple Status', 'Production Stable', 'All core services operational.', 6, {
+    visual: 'stat',
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'paul-hungry', "Paul's Hungry Level", 'Starving', 'Snack cache should be replenished.', 7, {
+    scope: 'person',
+    personId: 'partner-paul',
+    visual: 'stat',
+    tone: 'warning',
+  }),
+  widget('couple-paul-anna', 'anna-mood', "Anna's Mood", 'Cozy', 'Blanket mode active.', 8, {
+    scope: 'person',
+    personId: 'partner-anna',
+    visual: 'stat',
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'paul-battery', "Paul's Battery Level", '12', 'Immediate charging via food and silence advised.', 9, {
+    scope: 'person',
+    personId: 'partner-paul',
+    unit: '%',
+    visual: 'radial',
+    numericValue: 12,
+    max: 100,
+    tone: 'error',
+  }),
+  widget('couple-paul-anna', 'anna-coffee', "Anna's Coffee Requirement", 'Critical', 'Coffee queue priority elevated.', 10, {
+    scope: 'person',
+    personId: 'partner-anna',
+    visual: 'stat',
+    tone: 'warning',
+  }),
+  widget('couple-paul-anna', 'forgiveness', 'Time to Forgive After Fight', '14m', 'Drops to 4m when dessert is involved.', 11, {
+    visual: 'progress',
+    numericValue: 14,
+    max: 60,
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'dinner-latency', 'Dinner Decision Latency', '47m', 'Decision quorum remains complicated.', 12, {
+    visual: 'progress',
+    numericValue: 47,
+    max: 60,
+    tone: 'warning',
+  }),
+  widget('couple-paul-anna', 'hug-quota', 'Daily Hug Quota', '8 / 12', 'Four hugs remain before midnight.', 13, {
+    visual: 'progress',
+    numericValue: 66,
+    max: 100,
+    tone: 'info',
+  }),
+  widget('couple-paul-anna', 'cuddle-bandwidth', 'Cuddle Bandwidth', 'High', 'Streaming available in 4K comfort.', 14, {
+    visual: 'stat',
+    tone: 'success',
+  }),
+  widget('couple-paul-anna', 'weekend', 'Weekend Allocation', '40% sofa / 35% friends / 25% naps', 'Balanced but nap capacity can scale.', 15, {
+    visual: 'bar',
+    numericValue: 40,
+    tone: 'info',
+  }),
+  widget('couple-paul-anna', 'latest-memory', 'Latest Shared Memory', 'Tried a new ramen place and rated broth like engineers.', 'Indexed 2 hours ago.', 16, {
+    visual: 'memory',
+    tone: 'success',
+  }),
+  widget('couple-lina-tom', 'uptime', 'Relationship Uptime', '5y 191d', 'Healthy and passing checks.', 1, {
+    tone: 'success',
+    visual: 'stat',
+  }),
+  widget('couple-lina-tom', 'commitment', 'Commitment Level', '100', 'No rollback plan detected.', 2, {
+    unit: '%',
+    visual: 'progress',
+    numericValue: 100,
+    max: 100,
+    tone: 'success',
+  }),
+  widget('couple-lina-tom', 'coffee', 'Coffee Requirement', 'Elevated', 'One more cappuccino likely needed.', 3, {
+    visual: 'stat',
+    tone: 'warning',
+  }),
+  widget('couple-lina-tom', 'memory', 'Latest Shared Memory', 'Bought wedding shoes, celebrated with fries.', 'Pinned by both partners.', 4, {
+    visual: 'memory',
+    tone: 'success',
+  }),
+]
+
+export const defaultAlerts: CoupleAlert[] = [
+  {
+    id: 'alert-snack-shortage',
+    coupleId: 'couple-paul-anna',
+    title: 'Snack shortage detected',
+    detail: 'Pantry telemetry below acceptable movie-night threshold.',
+    severity: 'warning',
+    source: 'system',
+    active: true,
+    createdAt: now,
+  },
+  {
+    id: 'alert-anniversary',
+    coupleId: 'couple-paul-anna',
+    title: 'Anniversary approaching',
+    detail: 'Prepare flowers, dinner slot, or a suspiciously thoughtful plan.',
+    severity: 'info',
+    source: 'system',
+    active: true,
+    createdAt: now,
+  },
+  {
+    id: 'alert-cuddle',
+    coupleId: 'couple-paul-anna',
+    title: 'Cuddle maintenance overdue',
+    detail: 'Recommended maintenance window: tonight after dishes.',
+    severity: 'error',
+    source: 'partner',
+    active: true,
+    createdAt: now,
+    triggeredBy: 'Anna',
+  },
+  {
+    id: 'alert-dishwasher',
+    coupleId: 'couple-paul-anna',
+    title: 'Dishwasher loaded incorrectly',
+    detail: 'Fork placement violates household architecture guidelines.',
+    severity: 'warning',
+    source: 'partner',
+    active: true,
+    createdAt: now,
+    triggeredBy: 'Paul',
+  },
+  {
+    id: 'alert-nothing',
+    coupleId: 'couple-paul-anna',
+    title: 'One partner said "nothing"',
+    detail: 'Semantic parser detected elevated "something" probability.',
+    severity: 'error',
+    source: 'system',
+    active: true,
+    createdAt: now,
+  },
+]
+
+export const defaultState: DashboardState = {
+  couples: defaultCouples,
+  widgets: defaultWidgets,
+  alerts: defaultAlerts,
+}
+
+export const alertTemplates = [
+  'Snack shortage detected',
+  'Anniversary approaching',
+  'Cuddle maintenance overdue',
+  'Dishwasher loaded incorrectly',
+  'One partner said "nothing" but meant "something"',
+  'Dinner decision timeout',
+  'Blanket ownership dispute',
+  'Remote control failover requested',
+]
