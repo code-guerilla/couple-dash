@@ -1,13 +1,6 @@
 export type WidgetScope = 'shared' | 'person'
 
-export type WidgetVisual =
-  | 'stat'
-  | 'progress'
-  | 'radial'
-  | 'doughnut'
-  | 'bar'
-  | 'line'
-  | 'memory'
+export type WidgetVisual = 'stat' | 'progress' | 'radial' | 'doughnut' | 'bar' | 'line' | 'memory'
 
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 

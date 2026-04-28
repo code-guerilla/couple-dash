@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { isSupabaseConfigured } from '@/services/supabase'
 
@@ -13,17 +14,16 @@ const { couples } = useDashboardStore()
         A tiny always-on command center for wedding-grade household operations.
       </h1>
       <p class="max-w-2xl text-lg muted">
-        Private couple dashboards are loaded only after a partner, display, or app admin session is authenticated.
+        Private couple dashboards are loaded only after a partner, display, or app admin session is
+        authenticated.
       </p>
     </div>
 
     <div v-if="isSupabaseConfigured" class="grid gap-4 md:grid-cols-3">
-      <RouterLink class="link-card" to="/admin">
-        <UCard>
-          <template #header><h2 class="font-black">Admin</h2></template>
-          <p class="muted">Sign in and verify app_admin access.</p>
-        </UCard>
-      </RouterLink>
+      <UCard :as="RouterLink" to="/admin" class="transition-transform hover:-translate-y-0.5">
+        <template #header><h2 class="font-black">Admin</h2></template>
+        <p class="muted">Sign in and verify app_admin access.</p>
+      </UCard>
       <UCard>
         <template #header><h2 class="font-black">Display</h2></template>
         <p class="muted">Open a private /display/:slug URL and claim it with the display token.</p>
@@ -35,35 +35,36 @@ const { couples } = useDashboardStore()
     </div>
 
     <div v-else class="grid gap-4 md:grid-cols-2">
-      <RouterLink
+      <UCard
         v-for="couple in couples"
         :key="couple.id"
-        class="link-card"
+        :as="RouterLink"
+        class="transition-transform hover:-translate-y-0.5"
         :to="{ name: 'display', params: { coupleSlug: couple.slug } }"
       >
-        <UCard>
-          <template #header>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h2 class="text-3xl font-black">{{ couple.name }}</h2>
-                <p class="mt-1 text-base font-normal muted">{{ couple.subtitle }}</p>
-              </div>
-              <UBadge color="success" variant="soft">Production</UBadge>
+        <template #header>
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-3xl font-black">{{ couple.name }}</h2>
+              <p class="mt-1 text-base font-normal muted">{{ couple.subtitle }}</p>
             </div>
-          </template>
-
-          <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
-            <div class="soft-panel p-3">
-              <p class="muted">Wedding</p>
-              <p class="font-bold">{{ new Date(couple.weddingDate).toLocaleDateString() }}</p>
-            </div>
-            <div class="soft-panel p-3">
-              <p class="muted">Partners</p>
-              <p class="font-bold">{{ couple.partners.map((partner) => partner.name).join(' + ') }}</p>
-            </div>
+            <UBadge color="success" variant="soft">Production</UBadge>
           </div>
-        </UCard>
-      </RouterLink>
+        </template>
+
+        <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
+          <div class="rounded-md bg-muted p-3 ring ring-default">
+            <p class="muted">Wedding</p>
+            <p class="font-bold">{{ new Date(couple.weddingDate).toLocaleDateString() }}</p>
+          </div>
+          <div class="rounded-md bg-muted p-3 ring ring-default">
+            <p class="muted">Partners</p>
+            <p class="font-bold">
+              {{ couple.partners.map((partner) => partner.name).join(' + ') }}
+            </p>
+          </div>
+        </div>
+      </UCard>
     </div>
   </section>
 </template>

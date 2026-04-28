@@ -27,9 +27,13 @@ const {
 
 const currentPartnerId = ref<string | null>(null)
 const membershipError = ref<string | null>(null)
-const partner = computed(() => couple.value?.partners.find((item) => item.id === currentPartnerId.value))
+const partner = computed(() =>
+  couple.value?.partners.find((item) => item.id === currentPartnerId.value),
+)
 const editableWidgets = computed(() =>
-  widgets.value.filter((widget) => widget.scope === 'shared' || widget.personId === currentPartnerId.value),
+  widgets.value.filter(
+    (widget) => widget.scope === 'shared' || widget.personId === currentPartnerId.value,
+  ),
 )
 
 const newWidget = reactive({
@@ -41,7 +45,15 @@ const newWidget = reactive({
   tone: 'info' as AlertSeverity,
 })
 
-const visualOptions: WidgetVisual[] = ['stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory']
+const visualOptions: WidgetVisual[] = [
+  'stat',
+  'progress',
+  'radial',
+  'doughnut',
+  'bar',
+  'line',
+  'memory',
+]
 const toneOptions: AlertSeverity[] = ['info', 'success', 'warning', 'error']
 
 async function loadMembership() {
@@ -102,10 +114,12 @@ async function createWidget() {
     value: newWidget.value,
     detail: newWidget.detail || 'Freshly added from the mobile console.',
     scope: newWidget.scope,
-    personId: newWidget.scope === 'person' ? currentPartnerId.value ?? undefined : undefined,
+    personId: newWidget.scope === 'person' ? (currentPartnerId.value ?? undefined) : undefined,
     visual: newWidget.visual,
     tone: newWidget.tone,
-    numericValue: ['progress', 'radial', 'doughnut', 'line'].includes(newWidget.visual) ? 50 : undefined,
+    numericValue: ['progress', 'radial', 'doughnut', 'line'].includes(newWidget.visual)
+      ? 50
+      : undefined,
     max: 100,
     visible: true,
   })
@@ -158,42 +172,64 @@ onMounted(() => void loadPrivateEditor())
       />
     </div>
 
-    <UAlert v-if="error || membershipError" color="warning" variant="soft" :description="membershipError ?? error ?? ''" />
+    <UAlert
+      v-if="error || membershipError"
+      color="warning"
+      variant="soft"
+      :description="membershipError ?? error ?? ''"
+    />
 
-    <div class="stat-grid">
-      <div class="stat-cell">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <UCard variant="subtle">
         <div class="stat-label">Editable Metrics</div>
         <div class="stat-value">{{ editableWidgets.length }}</div>
         <div class="stat-note">Shared plus your own personal widgets</div>
-      </div>
-      <div class="stat-cell">
+      </UCard>
+      <UCard variant="subtle">
         <div class="stat-label">Active Alerts</div>
         <div class="stat-value text-amber-500">{{ alerts.length }}</div>
         <div class="stat-note">Visible on display</div>
-      </div>
+      </UCard>
     </div>
 
     <UCard>
       <template #header><h2 class="text-xl font-black">Add Widget</h2></template>
 
       <form class="form-stack" @submit.prevent="createWidget">
-        <UInput v-model="newWidget.label" class="w-full" placeholder="Metric key, e.g. Blanket Ownership" />
-        <UInput v-model="newWidget.value" class="w-full" placeholder="Value, e.g. Disputed" />
-        <UTextarea v-model="newWidget.detail" autoresize class="w-full" placeholder="Small dashboard explanation" />
+        <UFormField label="Metric key" required>
+          <UInput v-model="newWidget.label" class="w-full" placeholder="Blanket Ownership" />
+        </UFormField>
+        <UFormField label="Value" required>
+          <UInput v-model="newWidget.value" class="w-full" placeholder="Disputed" />
+        </UFormField>
+        <UFormField label="Dashboard explanation">
+          <UTextarea
+            v-model="newWidget.detail"
+            autoresize
+            class="w-full"
+            placeholder="Small dashboard explanation"
+          />
+        </UFormField>
 
         <div class="grid gap-3 sm:grid-cols-3">
-          <USelect
-            v-model="newWidget.scope"
-            class="w-full"
-            label-key="label"
-            value-key="value"
-            :items="[
+          <UFormField label="Scope">
+            <USelect
+              v-model="newWidget.scope"
+              class="w-full"
+              label-key="label"
+              value-key="value"
+              :items="[
                 { label: 'Shared', value: 'shared' },
                 { label: 'Only mine', value: 'person', disabled: !currentPartnerId },
               ]"
-          />
-          <USelect v-model="newWidget.visual" class="w-full" :items="visualOptions" />
-          <USelect v-model="newWidget.tone" class="w-full" :items="toneOptions" />
+            />
+          </UFormField>
+          <UFormField label="Visual">
+            <USelect v-model="newWidget.visual" class="w-full" :items="visualOptions" />
+          </UFormField>
+          <UFormField label="Tone">
+            <USelect v-model="newWidget.tone" class="w-full" :items="toneOptions" />
+          </UFormField>
         </div>
 
         <UButton label="Add widget" type="submit" />
@@ -217,14 +253,13 @@ onMounted(() => void loadPrivateEditor())
 
     <section class="space-y-3">
       <h2 class="text-xl font-black">Edit Live Metrics</h2>
-      <UCard
-        v-for="widget in editableWidgets"
-        :key="widget.id"
-      >
+      <UCard v-for="widget in editableWidgets" :key="widget.id">
         <form class="form-stack" @submit.prevent="saveWidget(widget)">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-              <UBadge :color="widget.scope === 'shared' ? 'info' : 'neutral'" variant="soft">{{ widget.scope }}</UBadge>
+              <UBadge :color="widget.scope === 'shared' ? 'info' : 'neutral'" variant="soft">{{
+                widget.scope
+              }}</UBadge>
               <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
                 {{ widget.visible ? 'visible' : 'hidden' }}
               </UBadge>
@@ -241,20 +276,32 @@ onMounted(() => void loadPrivateEditor())
             </div>
           </div>
 
-          <UInput v-model="widget.label" class="w-full font-semibold" />
-          <UInput v-model="widget.value" class="w-full text-lg" />
-          <UTextarea v-model="widget.detail" autoresize class="w-full" />
+          <UFormField label="Metric key">
+            <UInput v-model="widget.label" class="w-full font-semibold" />
+          </UFormField>
+          <UFormField label="Value">
+            <UInput v-model="widget.value" class="w-full text-lg" />
+          </UFormField>
+          <UFormField label="Dashboard explanation">
+            <UTextarea v-model="widget.detail" autoresize class="w-full" />
+          </UFormField>
 
           <div class="grid gap-3 sm:grid-cols-3">
-            <USelect v-model="widget.visual" class="w-full" :items="visualOptions" />
-            <USelect v-model="widget.tone" class="w-full" :items="toneOptions" />
-            <UInputNumber
-              class="w-full"
-              :max="100"
-              :min="0"
-              :model-value="widget.numericValue ?? 0"
-              @update:model-value="widget.numericValue = $event ?? 0"
-            />
+            <UFormField label="Visual">
+              <USelect v-model="widget.visual" class="w-full" :items="visualOptions" />
+            </UFormField>
+            <UFormField label="Tone">
+              <USelect v-model="widget.tone" class="w-full" :items="toneOptions" />
+            </UFormField>
+            <UFormField label="Numeric value">
+              <UInputNumber
+                class="w-full"
+                :max="100"
+                :min="0"
+                :model-value="widget.numericValue ?? 0"
+                @update:model-value="widget.numericValue = $event ?? 0"
+              />
+            </UFormField>
           </div>
         </form>
       </UCard>
@@ -262,7 +309,13 @@ onMounted(() => void loadPrivateEditor())
 
     <section class="space-y-3">
       <h2 class="text-xl font-black">Alerts</h2>
-      <UAlert v-for="alert in alerts" :key="alert.id" color="info" variant="outline" :description="alert.title">
+      <UAlert
+        v-for="alert in alerts"
+        :key="alert.id"
+        color="info"
+        variant="outline"
+        :description="alert.title"
+      >
         <template #actions>
           <UButton
             label="Deactivate"
@@ -277,6 +330,10 @@ onMounted(() => void loadPrivateEditor())
   </section>
 
   <section v-else class="mx-auto max-w-md">
-    <UAlert color="warning" variant="soft" description="No private couple dashboard is available for this account." />
+    <UAlert
+      color="warning"
+      variant="soft"
+      description="No private couple dashboard is available for this account."
+    />
   </section>
 </template>

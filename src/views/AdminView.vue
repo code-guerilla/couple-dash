@@ -33,7 +33,10 @@ onMounted(() => void checkAdmin())
 
 <template>
   <section class="mx-auto max-w-3xl space-y-4">
-    <AuthPanel v-if="isSupabaseConfigured && initialized && !isAuthenticated" @signed-in="checkAdmin" />
+    <AuthPanel
+      v-if="isSupabaseConfigured && initialized && !isAuthenticated"
+      @signed-in="checkAdmin"
+    />
 
     <UCard v-else>
       <div class="grid gap-4">
@@ -42,7 +45,13 @@ onMounted(() => void checkAdmin())
             <h1 class="text-2xl font-black">Admin</h1>
             <p class="text-sm muted">App admins can manage all private dashboard tenants.</p>
           </div>
-          <UButton label="Check access" :loading="checking" size="sm" type="button" @click="checkAdmin" />
+          <UButton
+            label="Check access"
+            :loading="checking"
+            size="sm"
+            type="button"
+            @click="checkAdmin"
+          />
         </div>
 
         <UAlert v-if="adminError" color="error" variant="soft" :description="adminError" />
@@ -54,7 +63,12 @@ onMounted(() => void checkAdmin())
           description="Admin session confirmed. Build tenant management here."
         />
 
-        <UAlert v-else color="warning" variant="soft" description="This account is not listed in app_admin." />
+        <UAlert
+          v-else
+          color="warning"
+          variant="soft"
+          description="This account is not listed in app_admin."
+        />
       </div>
     </UCard>
   </section>

@@ -55,13 +55,18 @@ onMounted(() => void acceptInvite())
 
 <template>
   <section class="mx-auto max-w-md space-y-4">
-    <AuthPanel v-if="isSupabaseConfigured && initialized && !isAuthenticated" @signed-in="acceptInvite" />
+    <AuthPanel
+      v-if="isSupabaseConfigured && initialized && !isAuthenticated"
+      @signed-in="acceptInvite"
+    />
 
     <UCard v-else>
       <template #header>
         <div>
           <h1 class="text-xl font-black">Partner Invite</h1>
-          <p class="text-sm muted">Accepting this invite links your Supabase account to this partner profile.</p>
+          <p class="text-sm muted">
+            Accepting this invite links your Supabase account to this partner profile.
+          </p>
         </div>
       </template>
 

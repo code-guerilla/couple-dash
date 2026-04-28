@@ -15,10 +15,16 @@ const displayToken = ref(String(route.query.token ?? ''))
 const claimError = ref<string | null>(null)
 const claiming = ref(false)
 const { ensureAnonymousSession, isSupabaseConfigured } = useSupabaseAuth()
-const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(coupleSlug.value)
+const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
+  coupleSlug.value,
+)
 
-const sharedWidgets = computed(() => visibleWidgets.value.filter((widget) => widget.scope === 'shared'))
-const personWidgets = computed(() => visibleWidgets.value.filter((widget) => widget.scope === 'person'))
+const sharedWidgets = computed(() =>
+  visibleWidgets.value.filter((widget) => widget.scope === 'shared'),
+)
+const personWidgets = computed(() =>
+  visibleWidgets.value.filter((widget) => widget.scope === 'person'),
+)
 
 const daysUntilWedding = computed(() => {
   if (!couple.value) {
@@ -97,8 +103,8 @@ onMounted(async () => {
 <template>
   <section v-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
     <div class="grid gap-4 xl:grid-cols-[1fr_21rem]">
-      <div class="hero-panel">
-        <div class="w-full justify-start p-6 sm:p-10">
+      <UCard :ui="{ body: 'p-6 sm:p-10' }">
+        <div class="w-full justify-start">
           <div class="max-w-4xl">
             <div class="mb-5 flex flex-wrap gap-2">
               <UBadge color="success" variant="soft">Private display session</UBadge>
@@ -109,18 +115,28 @@ onMounted(async () => {
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
             <p class="mt-4 max-w-2xl text-lg muted">{{ couple.subtitle }}</p>
 
-            <div class="stat-grid mt-8">
-              <div class="stat-cell">
+            <div
+              class="mt-8 grid overflow-hidden rounded-md border border-default bg-default shadow-sm sm:grid-cols-3"
+            >
+              <div
+                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
+              >
                 <div class="stat-label">Relationship Uptime</div>
                 <div class="stat-value text-green-500">{{ relationshipUptime }}</div>
-                <div class="stat-note">Since {{ new Date(couple.relationshipStart).toLocaleDateString() }}</div>
+                <div class="stat-note">
+                  Since {{ new Date(couple.relationshipStart).toLocaleDateString() }}
+                </div>
               </div>
-              <div class="stat-cell">
+              <div
+                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
+              >
                 <div class="stat-label">Days Until Wedding</div>
                 <div class="stat-value text-primary-500">{{ daysUntilWedding }}</div>
                 <div class="stat-note">{{ new Date(couple.weddingDate).toLocaleDateString() }}</div>
               </div>
-              <div class="stat-cell">
+              <div
+                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
+              >
                 <div class="stat-label">Commitment Level</div>
                 <div class="stat-value text-primary-400">100%</div>
                 <div class="stat-note">No rollback configured</div>
@@ -128,7 +144,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-      </div>
+      </UCard>
 
       <AlertFeed :alerts="alerts" />
     </div>
@@ -190,19 +206,27 @@ onMounted(async () => {
         <div>
           <h1 class="text-2xl font-black">Claim Display</h1>
           <p class="text-sm muted">
-            This screen needs an authenticated display session before it can read private dashboard data.
+            This screen needs an authenticated display session before it can read private dashboard
+            data.
           </p>
         </div>
 
-        <UAlert v-if="error || claimError" color="warning" variant="soft" :description="claimError ?? error ?? ''" />
-
-        <UInput
-          v-model="displayToken"
-          autocomplete="off"
-          class="w-full"
-          placeholder="Private display token"
-          type="password"
+        <UAlert
+          v-if="error || claimError"
+          color="warning"
+          variant="soft"
+          :description="claimError ?? error ?? ''"
         />
+
+        <UFormField label="Private display token" required>
+          <UInput
+            v-model="displayToken"
+            autocomplete="off"
+            class="w-full"
+            placeholder="Private display token"
+            type="password"
+          />
+        </UFormField>
         <UButton label="Claim Raspberry Pi display" :loading="claiming" type="submit" />
       </form>
     </UCard>

@@ -49,13 +49,18 @@ const meterValues = computed(() => [
             {{ valueWithUnit(widget) }}
           </h2>
         </div>
-        <UBadge v-if="ownerName" class="shrink-0" color="neutral" variant="soft">{{ ownerName }}</UBadge>
+        <UBadge v-if="ownerName" class="shrink-0" color="neutral" variant="soft">{{
+          ownerName
+        }}</UBadge>
       </div>
 
       <div v-if="widget.visual === 'radial'" class="flex items-center gap-4">
         <div
           class="metric-radial"
-          :style="{ '--metric-color': toneColors[widget.tone], '--metric-value': String(widget.numericValue ?? 0) }"
+          :style="{
+            '--metric-color': toneColors[widget.tone],
+            '--metric-value': String(widget.numericValue ?? 0),
+          }"
         >
           {{ widget.numericValue ?? 0 }}%
         </div>
@@ -82,7 +87,10 @@ const meterValues = computed(() => [
         <div class="flex items-center gap-4">
           <div
             class="metric-radial"
-            :style="{ '--metric-color': 'var(--ui-primary)', '--metric-value': String(widget.numericValue ?? 0) }"
+            :style="{
+              '--metric-color': 'var(--ui-primary)',
+              '--metric-value': String(widget.numericValue ?? 0),
+            }"
           >
             {{ widget.numericValue ?? 0 }}%
           </div>
@@ -91,7 +99,7 @@ const meterValues = computed(() => [
       </template>
 
       <template v-else-if="widget.visual === 'memory'">
-        <div class="metric-memory">
+        <div class="rounded-md border border-default bg-muted p-4">
           <p class="text-sm font-semibold leading-relaxed">{{ widget.value }}</p>
           <p class="mt-2 text-xs muted">{{ widget.detail }}</p>
         </div>

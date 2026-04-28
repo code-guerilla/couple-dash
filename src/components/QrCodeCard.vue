@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QRCode from 'qrcode'
 import { computed, ref, watchEffect } from 'vue'
+import { RouterLink } from 'vue-router'
 
 const props = defineProps<{
   label: string
@@ -24,9 +25,11 @@ watchEffect(async () => {
 </script>
 
 <template>
-  <RouterLink
-    class="qr-card group"
+  <UCard
+    :as="RouterLink"
+    class="transition-transform hover:-translate-y-0.5"
     :to="url"
+    :ui="{ body: 'flex items-center gap-3 p-3 sm:p-3' }"
   >
     <img class="qr-image" :src="dataUrl" :alt="label" />
     <span class="min-w-0">
@@ -36,5 +39,5 @@ watchEffect(async () => {
       <span class="block text-sm font-bold leading-tight">{{ label }}</span>
       <span class="mt-1 block truncate-line text-xs muted">Scan to edit live</span>
     </span>
-  </RouterLink>
+  </UCard>
 </template>

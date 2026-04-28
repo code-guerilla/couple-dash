@@ -34,13 +34,11 @@ async function submit() {
     <form class="form-stack" @submit.prevent="submit">
       <UAlert v-if="error" color="error" variant="soft" :description="error" />
 
-      <label class="field-stack">
-        <span class="field-label">Email</span>
+      <UFormField label="Email" required>
         <UInput v-model="email" autocomplete="email" required type="email" class="w-full" />
-      </label>
+      </UFormField>
 
-      <label class="field-stack">
-        <span class="field-label">Password</span>
+      <UFormField label="Password" required>
         <UInput
           v-model="password"
           autocomplete="current-password"
@@ -49,9 +47,13 @@ async function submit() {
           type="password"
           class="w-full"
         />
-      </label>
+      </UFormField>
 
-      <UButton :label="mode === 'sign-in' ? 'Sign in' : 'Create account'" :loading="loading" type="submit" />
+      <UButton
+        :label="mode === 'sign-in' ? 'Sign in' : 'Create account'"
+        :loading="loading"
+        type="submit"
+      />
 
       <UButton
         :label="mode === 'sign-in' ? 'Need an account?' : 'Already have an account?'"

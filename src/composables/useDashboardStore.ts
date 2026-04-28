@@ -81,7 +81,11 @@ function mapAlertFromRow(row: Record<string, unknown>): CoupleAlert {
 }
 
 function mapSupabaseError(message: string) {
-  if (message.includes('JWT') || message.includes('permission denied') || message.includes('Results contain 0 rows')) {
+  if (
+    message.includes('JWT') ||
+    message.includes('permission denied') ||
+    message.includes('Results contain 0 rows')
+  ) {
     return 'No private dashboard is available for this authenticated session'
   }
 
@@ -123,7 +127,9 @@ async function loadSupabaseCouple(coupleSlug: string) {
     ])
 
   if (widgetsError || alertsError) {
-    error.value = mapSupabaseError(widgetsError?.message ?? alertsError?.message ?? 'Supabase load failed')
+    error.value = mapSupabaseError(
+      widgetsError?.message ?? alertsError?.message ?? 'Supabase load failed',
+    )
     loading.value = false
     return
   }
@@ -167,7 +173,12 @@ function subscribeSupabaseCouple(coupleId: string, coupleSlug: string) {
     .channel(`couple-dashboard:${coupleId}`)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'dashboard_widget', filter: `couple_id=eq.${coupleId}` },
+      {
+        event: '*',
+        schema: 'public',
+        table: 'dashboard_widget',
+        filter: `couple_id=eq.${coupleId}`,
+      },
       () => void loadSupabaseCouple(coupleSlug),
     )
     .on(
@@ -375,4 +386,3 @@ export function useDashboardStore(coupleSlug?: string) {
     setAlertActive,
   }
 }
-

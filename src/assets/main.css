@@ -1,14 +1,19 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
-@custom-variant dark (&:where(.app-dark, .app-dark *));
+@custom-variant dark (&:where(.dark, .dark *, .app-dark, .app-dark *));
 
 :root {
   color-scheme: light;
   color: var(--ui-text);
   background: var(--ui-bg);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    var(--font-sans, Inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
     sans-serif;
 }
 
@@ -49,7 +54,7 @@ select {
   }
 
   .brand-link {
-    @apply inline-flex min-h-10 items-center rounded-md text-xl font-black text-highlighted no-underline outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-default;
+    @apply inline-flex min-h-10 items-center gap-1 rounded-md text-xl font-black text-highlighted no-underline outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-default;
   }
 
   .page-shell {
@@ -65,30 +70,6 @@ select {
     opacity: 0.75;
   }
 
-  .link-card {
-    @apply block text-inherit no-underline transition-transform hover:-translate-y-0.5;
-  }
-
-  .surface-panel {
-    @apply rounded-md border border-default bg-default shadow-sm;
-  }
-
-  .soft-panel {
-    @apply rounded-md border border-default bg-muted;
-  }
-
-  .metric-memory {
-    @apply rounded-md border border-default bg-muted p-4;
-  }
-
-  .stat-grid {
-    @apply grid overflow-hidden rounded-md border border-default bg-default shadow-sm sm:grid-cols-3;
-  }
-
-  .stat-cell {
-    @apply border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0;
-  }
-
   .stat-label {
     @apply text-sm text-muted;
   }
@@ -101,24 +82,8 @@ select {
     @apply mt-1 text-sm text-muted;
   }
 
-  .hero-panel {
-    @apply min-h-88 overflow-hidden rounded-md border border-default bg-default shadow-sm;
-  }
-
   .form-stack {
     @apply grid gap-4;
-  }
-
-  .field-stack {
-    @apply grid gap-2;
-  }
-
-  .field-label {
-    @apply text-sm font-bold text-muted;
-  }
-
-  .qr-card {
-    @apply flex items-center gap-3 rounded-md border border-default bg-default p-3 text-inherit no-underline shadow-sm transition-transform hover:-translate-y-0.5;
   }
 
   .qr-image {
@@ -142,5 +107,37 @@ select {
 
   .metric-meter > span {
     @apply h-full;
+  }
+
+  .theme-picker-legend {
+    @apply mb-2 flex select-none items-center gap-1 text-[11px] font-semibold leading-none;
+  }
+
+  .theme-picker-grid {
+    @apply -mx-2 grid gap-1;
+  }
+
+  .theme-picker-grid-primary {
+    @apply grid-cols-3;
+  }
+
+  .theme-picker-grid-radius {
+    @apply grid-cols-5;
+  }
+
+  .theme-picker-button {
+    @apply min-w-0 justify-start gap-1 rounded-sm px-2 text-[11px] capitalize ring-default hover:bg-elevated/50;
+  }
+
+  .theme-picker-button-content {
+    @apply flex min-w-0 items-center gap-1;
+  }
+
+  .theme-picker-chip {
+    @apply inline-block size-2 shrink-0 rounded-full ring-1 ring-default;
+  }
+
+  .theme-picker-label {
+    @apply min-w-0 truncate text-[11px] leading-none;
   }
 }
