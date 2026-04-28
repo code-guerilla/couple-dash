@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Password from 'primevue/password'
 import { ref } from 'vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 
@@ -28,42 +23,43 @@ async function submit() {
 </script>
 
 <template>
-  <Card>
-    <template #title>{{ mode === 'sign-in' ? 'Sign in' : 'Create account' }}</template>
-    <template #subtitle>Dashboard access uses Supabase Auth.</template>
-    <template #content>
-      <form class="form-stack" @submit.prevent="submit">
-        <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-
-        <label class="field-stack">
-          <span class="field-label">Email</span>
-          <InputText v-model="email" autocomplete="email" fluid required type="email" />
-        </label>
-
-        <label class="field-stack">
-          <span class="field-label">Password</span>
-          <Password
-            v-model="password"
-            autocomplete="current-password"
-            fluid
-            :feedback="false"
-            input-class="w-full"
-            minlength="6"
-            required
-            toggle-mask
-          />
-        </label>
-
-        <Button :label="mode === 'sign-in' ? 'Sign in' : 'Create account'" :loading="loading" type="submit" />
-
-        <Button
-          :label="mode === 'sign-in' ? 'Need an account?' : 'Already have an account?'"
-          size="small"
-          text
-          type="button"
-          @click="mode = mode === 'sign-in' ? 'sign-up' : 'sign-in'"
-        />
-      </form>
+  <UCard>
+    <template #header>
+      <div>
+        <h2 class="text-xl font-black">{{ mode === 'sign-in' ? 'Sign in' : 'Create account' }}</h2>
+        <p class="text-sm muted">Dashboard access uses Supabase Auth.</p>
+      </div>
     </template>
-  </Card>
+
+    <form class="form-stack" @submit.prevent="submit">
+      <UAlert v-if="error" color="error" variant="soft" :description="error" />
+
+      <label class="field-stack">
+        <span class="field-label">Email</span>
+        <UInput v-model="email" autocomplete="email" required type="email" class="w-full" />
+      </label>
+
+      <label class="field-stack">
+        <span class="field-label">Password</span>
+        <UInput
+          v-model="password"
+          autocomplete="current-password"
+          minlength="6"
+          required
+          type="password"
+          class="w-full"
+        />
+      </label>
+
+      <UButton :label="mode === 'sign-in' ? 'Sign in' : 'Create account'" :loading="loading" type="submit" />
+
+      <UButton
+        :label="mode === 'sign-in' ? 'Need an account?' : 'Already have an account?'"
+        size="sm"
+        variant="ghost"
+        type="button"
+        @click="mode = mode === 'sign-in' ? 'sign-up' : 'sign-in'"
+      />
+    </form>
+  </UCard>
 </template>

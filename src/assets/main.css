@@ -1,13 +1,12 @@
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @import 'tailwindcss';
-@import 'tailwindcss-primeui';
+@import '@nuxt/ui';
 
 @custom-variant dark (&:where(.app-dark, .app-dark *));
 
 :root {
   color-scheme: light;
-  color: var(--p-text-color);
-  background: var(--p-surface-50);
+  color: var(--ui-text);
+  background: var(--ui-bg);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -15,25 +14,6 @@
 
 .app-dark {
   color-scheme: dark;
-}
-
-.app-liquid-glass {
-  --liquid-glass-surface: color-mix(in srgb, var(--p-content-background) 58%, transparent);
-  --liquid-glass-surface-soft: color-mix(in srgb, var(--p-content-background) 38%, transparent);
-  --liquid-glass-border: color-mix(in srgb, #fff 36%, var(--p-content-border-color));
-  --liquid-glass-shadow:
-    0 18px 46px color-mix(in srgb, var(--p-surface-950) 12%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 34%, transparent);
-  --liquid-glass-blur: blur(22px) saturate(1.45);
-}
-
-.app-dark.app-liquid-glass {
-  --liquid-glass-surface: color-mix(in srgb, var(--p-content-background) 50%, transparent);
-  --liquid-glass-surface-soft: color-mix(in srgb, var(--p-content-background) 34%, transparent);
-  --liquid-glass-border: color-mix(in srgb, #fff 18%, var(--p-content-border-color));
-  --liquid-glass-shadow:
-    0 18px 52px color-mix(in srgb, #000 32%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 13%, transparent);
 }
 
 * {
@@ -44,32 +24,12 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: var(--p-text-color);
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--p-primary-100) 64%, transparent), transparent 32rem),
-    linear-gradient(180deg, var(--p-surface-50), var(--p-surface-100) 48%, var(--p-surface-200));
+  color: var(--ui-text);
+  background: var(--ui-bg);
 }
 
 .app-dark body {
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--p-primary-900) 42%, transparent), transparent 34rem),
-    linear-gradient(180deg, var(--p-surface-950), var(--p-surface-900) 58%, var(--p-surface-800));
-}
-
-.app-liquid-glass body {
-  background:
-    linear-gradient(135deg, color-mix(in srgb, #fff 52%, transparent), color-mix(in srgb, var(--p-primary-100) 34%, transparent) 42%, transparent),
-    radial-gradient(circle at top left, color-mix(in srgb, var(--p-primary-200) 54%, transparent), transparent 31rem),
-    linear-gradient(180deg, var(--p-surface-50), var(--p-surface-100) 46%, var(--p-surface-200));
-  background-attachment: fixed;
-}
-
-.app-dark.app-liquid-glass body {
-  background:
-    linear-gradient(135deg, color-mix(in srgb, #000 34%, transparent), color-mix(in srgb, var(--p-primary-950) 34%, transparent) 48%, transparent),
-    radial-gradient(circle at top left, color-mix(in srgb, var(--p-primary-800) 36%, transparent), transparent 34rem),
-    linear-gradient(180deg, var(--p-surface-950), var(--p-surface-900) 56%, var(--p-surface-800));
-  background-attachment: fixed;
+  background: var(--ui-bg);
 }
 
 button,
@@ -85,11 +45,11 @@ select {
   }
 
   .app-topbar {
-    @apply sticky top-0 z-30 border-b border-surface bg-surface-0 shadow-sm dark:bg-surface-900;
+    @apply sticky top-0 z-30 border-b border-default bg-default shadow-sm;
   }
 
   .brand-link {
-    @apply inline-flex min-h-10 items-center rounded-border text-xl font-black text-color no-underline outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-900;
+    @apply inline-flex min-h-10 items-center rounded-md text-xl font-black text-highlighted no-underline outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-default;
   }
 
   .page-shell {
@@ -97,11 +57,11 @@ select {
   }
 
   .muted {
-    @apply text-muted-color;
+    @apply text-muted;
   }
 
   .subtle {
-    @apply text-muted-color;
+    @apply text-dimmed;
     opacity: 0.75;
   }
 
@@ -110,27 +70,27 @@ select {
   }
 
   .surface-panel {
-    @apply rounded-border border border-surface bg-surface-0 shadow-sm dark:bg-surface-900;
+    @apply rounded-md border border-default bg-default shadow-sm;
   }
 
   .soft-panel {
-    @apply rounded-border border border-surface bg-surface-0 dark:bg-surface-900;
+    @apply rounded-md border border-default bg-muted;
   }
 
   .metric-memory {
-    @apply rounded-border border border-surface bg-surface-50 p-4 dark:bg-surface-800;
+    @apply rounded-md border border-default bg-muted p-4;
   }
 
   .stat-grid {
-    @apply grid overflow-hidden rounded-border border border-surface bg-surface-0 shadow-sm dark:bg-surface-900 sm:grid-cols-3;
+    @apply grid overflow-hidden rounded-md border border-default bg-default shadow-sm sm:grid-cols-3;
   }
 
   .stat-cell {
-    @apply border-t border-surface p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0;
+    @apply border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0;
   }
 
   .stat-label {
-    @apply text-sm text-muted-color;
+    @apply text-sm text-muted;
   }
 
   .stat-value {
@@ -138,11 +98,11 @@ select {
   }
 
   .stat-note {
-    @apply mt-1 text-sm text-muted-color;
+    @apply mt-1 text-sm text-muted;
   }
 
   .hero-panel {
-    @apply min-h-88 overflow-hidden rounded-border border border-surface bg-surface-0 shadow-sm dark:bg-surface-900;
+    @apply min-h-88 overflow-hidden rounded-md border border-default bg-default shadow-sm;
   }
 
   .form-stack {
@@ -154,117 +114,33 @@ select {
   }
 
   .field-label {
-    @apply text-sm font-bold text-muted-color;
-  }
-
-  .theme-grid {
-    @apply grid gap-3;
-  }
-
-  .theme-label {
-    @apply text-sm font-extrabold text-muted-color;
-  }
-
-  .theme-trigger {
-    @apply h-9 min-w-9 p-0;
-  }
-
-  .theme-trigger .p-button-label {
-    @apply hidden;
-  }
-
-  .theme-trigger-icon {
-    @apply text-xl leading-none text-primary;
-  }
-
-  .palette-section-stack {
-    @apply grid gap-3;
-  }
-
-  .palette-section {
-    @apply grid gap-1.5;
-  }
-
-  .palette-section-label {
-    @apply text-xs font-extrabold uppercase leading-none text-muted-color;
-    opacity: 0.75;
-  }
-
-  .swatch-row {
-    @apply flex flex-wrap gap-2;
-  }
-
-  .theme-swatch {
-    @apply inline-grid h-6 w-6 cursor-pointer place-items-center rounded-full border-2 border-transparent;
-    background: var(--swatch-color);
-  }
-
-  .theme-swatch[data-active="true"] {
-    @apply border-primary ring-2 ring-primary ring-offset-2 ring-offset-surface-0 dark:ring-offset-surface-900;
-  }
-
-  .theme-row {
-    @apply flex items-center justify-between gap-4;
-  }
-
-  .theme-popover {
-    width: min(19rem, calc(100vw - 2rem));
+    @apply text-sm font-bold text-muted;
   }
 
   .qr-card {
-    @apply flex items-center gap-3 rounded-border border border-surface bg-surface-0 p-3 text-inherit no-underline shadow-sm transition-transform hover:-translate-y-0.5 dark:bg-surface-900;
+    @apply flex items-center gap-3 rounded-md border border-default bg-default p-3 text-inherit no-underline shadow-sm transition-transform hover:-translate-y-0.5;
   }
 
   .qr-image {
-    @apply h-20 w-20 shrink-0 rounded-border border border-surface bg-white p-1;
+    @apply h-20 w-20 shrink-0 rounded-md border border-default bg-white p-1;
   }
 
   .truncate-line {
     @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
-  .app-liquid-glass .app-topbar,
-  .app-liquid-glass .surface-panel,
-  .app-liquid-glass .soft-panel,
-  .app-liquid-glass .stat-grid,
-  .app-liquid-glass .hero-panel,
-  .app-liquid-glass .qr-card {
-    border-color: var(--liquid-glass-border);
+  .metric-radial {
+    @apply grid h-22 w-22 shrink-0 place-items-center rounded-full text-sm font-black;
     background:
-      linear-gradient(135deg, color-mix(in srgb, #fff 18%, transparent), transparent 38%),
-      var(--liquid-glass-surface);
-    box-shadow: var(--liquid-glass-shadow);
-    backdrop-filter: var(--liquid-glass-blur);
-    -webkit-backdrop-filter: var(--liquid-glass-blur);
+      radial-gradient(circle at center, var(--ui-bg) 55%, transparent 56%),
+      conic-gradient(var(--metric-color) calc(var(--metric-value) * 1%), var(--ui-bg-elevated) 0);
   }
 
-  .app-liquid-glass .soft-panel,
-  .app-liquid-glass .metric-memory {
-    background: var(--liquid-glass-surface-soft);
+  .metric-meter {
+    @apply flex h-3 overflow-hidden rounded-full bg-elevated;
   }
 
-  .app-liquid-glass .metric-memory {
-    border-color: var(--liquid-glass-border);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent);
-  }
-
-  .app-liquid-glass .hero-panel {
-    position: relative;
-  }
-
-  .app-liquid-glass .hero-panel::before {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    content: "";
-    background:
-      linear-gradient(110deg, color-mix(in srgb, #fff 32%, transparent), transparent 22% 72%, color-mix(in srgb, #fff 14%, transparent)),
-      linear-gradient(180deg, transparent, color-mix(in srgb, var(--p-content-background) 18%, transparent));
-    opacity: 0.68;
-  }
-
-  .app-liquid-glass .hero-panel > * {
-    position: relative;
-    z-index: 1;
+  .metric-meter > span {
+    @apply h-full;
   }
 }

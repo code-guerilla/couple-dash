@@ -1,12 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import InputNumber from 'primevue/inputnumber'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Select from 'primevue/select'
-import Tag from 'primevue/tag'
-import Textarea from 'primevue/textarea'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
@@ -157,18 +149,16 @@ onMounted(() => void loadPrivateEditor())
         <p class="text-sm font-semibold muted">{{ couple.name }}</p>
         <h1 class="text-3xl font-black">{{ partner?.name ?? 'Partner' }} console</h1>
       </div>
-      <Button
+      <UButton
         label="Display"
-        size="small"
-        text
+        size="sm"
+        variant="ghost"
         type="button"
         @click="router.push({ name: 'display', params: { coupleSlug: couple.slug } })"
       />
     </div>
 
-    <Message v-if="error || membershipError" severity="warn" :closable="false">
-      {{ membershipError ?? error }}
-    </Message>
+    <UAlert v-if="error || membershipError" color="warning" variant="soft" :description="membershipError ?? error ?? ''" />
 
     <div class="stat-grid">
       <div class="stat-cell">
@@ -183,44 +173,42 @@ onMounted(() => void loadPrivateEditor())
       </div>
     </div>
 
-    <Card>
-      <template #title>Add Widget</template>
-      <template #content>
-        <form class="form-stack" @submit.prevent="createWidget">
-          <InputText v-model="newWidget.label" fluid placeholder="Metric key, e.g. Blanket Ownership" />
-          <InputText v-model="newWidget.value" fluid placeholder="Value, e.g. Disputed" />
-          <Textarea v-model="newWidget.detail" auto-resize fluid placeholder="Small dashboard explanation" />
+    <UCard>
+      <template #header><h2 class="text-xl font-black">Add Widget</h2></template>
 
-          <div class="grid gap-3 sm:grid-cols-3">
-            <Select
-              v-model="newWidget.scope"
-              fluid
-              option-disabled="disabled"
-              option-label="label"
-              option-value="value"
-              :options="[
+      <form class="form-stack" @submit.prevent="createWidget">
+        <UInput v-model="newWidget.label" class="w-full" placeholder="Metric key, e.g. Blanket Ownership" />
+        <UInput v-model="newWidget.value" class="w-full" placeholder="Value, e.g. Disputed" />
+        <UTextarea v-model="newWidget.detail" autoresize class="w-full" placeholder="Small dashboard explanation" />
+
+        <div class="grid gap-3 sm:grid-cols-3">
+          <USelect
+            v-model="newWidget.scope"
+            class="w-full"
+            label-key="label"
+            value-key="value"
+            :items="[
                 { label: 'Shared', value: 'shared' },
                 { label: 'Only mine', value: 'person', disabled: !currentPartnerId },
               ]"
-            />
-            <Select v-model="newWidget.visual" fluid :options="visualOptions" />
-            <Select v-model="newWidget.tone" fluid :options="toneOptions" />
-          </div>
+          />
+          <USelect v-model="newWidget.visual" class="w-full" :items="visualOptions" />
+          <USelect v-model="newWidget.tone" class="w-full" :items="toneOptions" />
+        </div>
 
-          <Button label="Add widget" type="submit" />
-        </form>
-      </template>
-    </Card>
+        <UButton label="Add widget" type="submit" />
+      </form>
+    </UCard>
 
     <section class="space-y-3">
       <h2 class="text-xl font-black">Trigger Alert</h2>
       <div class="grid gap-2 sm:grid-cols-2">
-        <Button
+        <UButton
           v-for="template in alertTemplates"
           :key="template"
           class="justify-start text-left"
           :label="template"
-          outlined
+          variant="outline"
           type="button"
           @click="sendAlert(template)"
         />
@@ -229,38 +217,39 @@ onMounted(() => void loadPrivateEditor())
 
     <section class="space-y-3">
       <h2 class="text-xl font-black">Edit Live Metrics</h2>
-      <Card
+      <UCard
         v-for="widget in editableWidgets"
         :key="widget.id"
       >
-        <template #content>
         <form class="form-stack" @submit.prevent="saveWidget(widget)">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-              <Tag :severity="widget.scope === 'shared' ? 'info' : 'secondary'" :value="widget.scope" />
-              <Tag :severity="widget.visible ? 'success' : 'secondary'" :value="widget.visible ? 'visible' : 'hidden'" />
+              <UBadge :color="widget.scope === 'shared' ? 'info' : 'neutral'" variant="soft">{{ widget.scope }}</UBadge>
+              <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
+                {{ widget.visible ? 'visible' : 'hidden' }}
+              </UBadge>
             </div>
             <div class="flex gap-2">
-              <Button
+              <UButton
                 :label="widget.visible ? 'Hide' : 'Show'"
-                outlined
-                size="small"
+                variant="outline"
+                size="sm"
                 type="button"
                 @click="setWidgetVisible(widget.id, !widget.visible)"
               />
-              <Button label="Save" size="small" type="submit" />
+              <UButton label="Save" size="sm" type="submit" />
             </div>
           </div>
 
-          <InputText v-model="widget.label" fluid class="font-semibold" />
-          <InputText v-model="widget.value" fluid class="text-lg" />
-          <Textarea v-model="widget.detail" auto-resize fluid />
+          <UInput v-model="widget.label" class="w-full font-semibold" />
+          <UInput v-model="widget.value" class="w-full text-lg" />
+          <UTextarea v-model="widget.detail" autoresize class="w-full" />
 
           <div class="grid gap-3 sm:grid-cols-3">
-            <Select v-model="widget.visual" fluid :options="visualOptions" />
-            <Select v-model="widget.tone" fluid :options="toneOptions" />
-            <InputNumber
-              fluid
+            <USelect v-model="widget.visual" class="w-full" :items="visualOptions" />
+            <USelect v-model="widget.tone" class="w-full" :items="toneOptions" />
+            <UInputNumber
+              class="w-full"
               :max="100"
               :min="0"
               :model-value="widget.numericValue ?? 0"
@@ -268,21 +257,26 @@ onMounted(() => void loadPrivateEditor())
             />
           </div>
         </form>
-        </template>
-      </Card>
+      </UCard>
     </section>
 
     <section class="space-y-3">
       <h2 class="text-xl font-black">Alerts</h2>
-      <Message v-for="alert in alerts" :key="alert.id" severity="info" :closable="false" variant="outlined">
-        <span>{{ alert.title }}</span>
-        <Button class="ml-auto" label="Deactivate" size="small" text type="button" @click="setAlertActive(alert.id, false)" />
-      </Message>
+      <UAlert v-for="alert in alerts" :key="alert.id" color="info" variant="outline" :description="alert.title">
+        <template #actions>
+          <UButton
+            label="Deactivate"
+            size="sm"
+            variant="ghost"
+            type="button"
+            @click="setAlertActive(alert.id, false)"
+          />
+        </template>
+      </UAlert>
     </section>
   </section>
 
   <section v-else class="mx-auto max-w-md">
-    <Message severity="warn" :closable="false">No private couple dashboard is available for this account.</Message>
+    <UAlert color="warning" variant="soft" description="No private couple dashboard is available for this account." />
   </section>
 </template>
-

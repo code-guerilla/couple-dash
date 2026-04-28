@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
 import { onMounted, ref } from 'vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
@@ -38,27 +35,27 @@ onMounted(() => void checkAdmin())
   <section class="mx-auto max-w-3xl space-y-4">
     <AuthPanel v-if="isSupabaseConfigured && initialized && !isAuthenticated" @signed-in="checkAdmin" />
 
-    <Card v-else>
-      <template #content>
-        <div class="grid gap-4">
+    <UCard v-else>
+      <div class="grid gap-4">
         <div class="flex items-center justify-between gap-4">
           <div>
             <h1 class="text-2xl font-black">Admin</h1>
             <p class="text-sm muted">App admins can manage all private dashboard tenants.</p>
           </div>
-          <Button label="Check access" :loading="checking" size="small" type="button" @click="checkAdmin" />
+          <UButton label="Check access" :loading="checking" size="sm" type="button" @click="checkAdmin" />
         </div>
 
-        <Message v-if="adminError" severity="error" :closable="false">{{ adminError }}</Message>
+        <UAlert v-if="adminError" color="error" variant="soft" :description="adminError" />
 
-        <Message v-else-if="isAdmin" severity="success" :closable="false">
-          Admin session confirmed. Build tenant management here.
-        </Message>
+        <UAlert
+          v-else-if="isAdmin"
+          color="success"
+          variant="soft"
+          description="Admin session confirmed. Build tenant management here."
+        />
 
-        <Message v-else severity="warn" :closable="false">This account is not listed in app_admin.</Message>
-        </div>
-      </template>
-    </Card>
+        <UAlert v-else color="warning" variant="soft" description="This account is not listed in app_admin." />
+      </div>
+    </UCard>
   </section>
 </template>
-

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import Message from 'primevue/message'
-import Tag from 'primevue/tag'
 import type { CoupleAlert } from '@/types'
 
 defineProps<{
@@ -10,7 +8,7 @@ defineProps<{
 const alertClasses: Record<CoupleAlert['severity'], string> = {
   info: 'info',
   success: 'success',
-  warning: 'warn',
+  warning: 'warning',
   error: 'error',
 }
 </script>
@@ -19,25 +17,26 @@ const alertClasses: Record<CoupleAlert['severity'], string> = {
   <section class="space-y-3">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-black">Live Alerts</h2>
-      <Tag severity="secondary" :value="`${alerts.length} active`" />
+      <UBadge color="neutral" variant="soft">{{ alerts.length }} active</UBadge>
     </div>
 
-    <Message v-if="alerts.length === 0" severity="success" :closable="false">No active household incidents.</Message>
+    <UAlert v-if="alerts.length === 0" color="success" variant="soft" description="No active household incidents." />
 
-    <Message
+    <UAlert
       v-for="alert in alerts"
       :key="alert.id"
-      :severity="alertClasses[alert.severity]"
-      :closable="false"
-      variant="outlined"
+      :color="alertClasses[alert.severity]"
+      variant="outline"
     >
-      <div class="min-w-0">
+      <template #description>
+        <div class="min-w-0">
         <h3 class="font-bold">{{ alert.title }}</h3>
         <p class="text-sm">{{ alert.detail }}</p>
         <p class="mt-1 text-xs opacity-70">
           {{ alert.source === 'system' ? 'System generated' : `Triggered by ${alert.triggeredBy ?? 'partner'}` }}
         </p>
       </div>
-    </Message>
+      </template>
+    </UAlert>
   </section>
 </template>

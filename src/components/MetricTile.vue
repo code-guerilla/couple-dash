@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import Card from 'primevue/card'
-import Knob from 'primevue/knob'
-import MeterGroup from 'primevue/metergroup'
-import ProgressBar from 'primevue/progressbar'
-import Tag from 'primevue/tag'
 import { computed } from 'vue'
 import type { DashboardWidget } from '@/types'
 
@@ -20,10 +15,10 @@ const toneClasses: Record<DashboardWidget['tone'], string> = {
 }
 
 const toneColors: Record<DashboardWidget['tone'], string> = {
-  info: 'var(--p-blue-500)',
-  success: 'var(--p-green-500)',
-  warning: 'var(--p-amber-500)',
-  error: 'var(--p-red-500)',
+  info: 'var(--ui-info)',
+  success: 'var(--ui-success)',
+  warning: 'var(--ui-warning)',
+  error: 'var(--ui-error)',
 }
 
 function valueWithUnit(widget: DashboardWidget) {
@@ -34,17 +29,16 @@ const meterValues = computed(() => [
   {
     label: props.widget.label,
     value: props.widget.numericValue ?? 40,
-    color: 'var(--p-primary-500)',
+    color: 'var(--ui-primary)',
   },
-  { label: 'Shared', value: 35, color: 'var(--p-surface-500)' },
-  { label: 'Reserve', value: 25, color: 'var(--p-primary-300)' },
+  { label: 'Shared', value: 35, color: 'var(--ui-bg-accented)' },
+  { label: 'Reserve', value: 25, color: 'var(--ui-primary)' },
 ])
 </script>
 
 <template>
-  <Card>
-    <template #content>
-      <div class="grid gap-4">
+  <UCard>
+    <div class="grid gap-4">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
           <p class="text-sm font-medium muted">{{ widget.label }}</p>
@@ -55,42 +49,43 @@ const meterValues = computed(() => [
             {{ valueWithUnit(widget) }}
           </h2>
         </div>
-        <Tag v-if="ownerName" class="shrink-0" severity="secondary" :value="ownerName" />
+        <UBadge v-if="ownerName" class="shrink-0" color="neutral" variant="soft">{{ ownerName }}</UBadge>
       </div>
 
       <div v-if="widget.visual === 'radial'" class="flex items-center gap-4">
-        <Knob
-          :model-value="widget.numericValue ?? 0"
-          readonly
-          :size="86"
-          :value-color="toneColors[widget.tone]"
-          range-color="var(--p-surface-200)"
-          text-color="var(--p-text-color)"
-        />
+        <div
+          class="metric-radial"
+          :style="{ '--metric-color': toneColors[widget.tone], '--metric-value': String(widget.numericValue ?? 0) }"
+        >
+          {{ widget.numericValue ?? 0 }}%
+        </div>
         <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
       </div>
 
       <template v-else-if="widget.visual === 'progress' || widget.visual === 'line'">
-        <ProgressBar :value="widget.numericValue ?? 0" />
+        <UProgress :model-value="widget.numericValue ?? 0" />
         <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
       </template>
 
       <template v-else-if="widget.visual === 'bar'">
-        <MeterGroup :value="meterValues" label-position="end" />
+        <div class="metric-meter" aria-hidden="true">
+          <span
+            v-for="meter in meterValues"
+            :key="meter.label"
+            :style="{ width: `${meter.value}%`, background: meter.color }"
+          />
+        </div>
         <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
       </template>
 
       <template v-else-if="widget.visual === 'doughnut'">
         <div class="flex items-center gap-4">
-          <Knob
-            :model-value="widget.numericValue ?? 0"
-            readonly
-            :size="86"
-            :stroke-width="14"
-            value-color="var(--p-primary-500)"
-            range-color="var(--p-surface-200)"
-            text-color="var(--p-text-color)"
-          />
+          <div
+            class="metric-radial"
+            :style="{ '--metric-color': 'var(--ui-primary)', '--metric-value': String(widget.numericValue ?? 0) }"
+          >
+            {{ widget.numericValue ?? 0 }}%
+          </div>
           <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
         </div>
       </template>
@@ -107,7 +102,6 @@ const meterValues = computed(() => [
       </template>
 
       <p class="text-xs subtle">Updated {{ new Date(widget.updatedAt).toLocaleTimeString() }}</p>
-      </div>
-    </template>
-  </Card>
+    </div>
+  </UCard>
 </template>

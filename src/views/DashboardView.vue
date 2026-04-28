@@ -1,10 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Skeleton from 'primevue/skeleton'
-import Tag from 'primevue/tag'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
@@ -107,8 +101,10 @@ onMounted(async () => {
         <div class="w-full justify-start p-6 sm:p-10">
           <div class="max-w-4xl">
             <div class="mb-5 flex flex-wrap gap-2">
-              <Tag severity="success" value="Private display session" />
-              <Tag severity="secondary" :value="isSupabaseConfigured ? 'RLS protected realtime' : 'Local demo'" />
+              <UBadge color="success" variant="soft">Private display session</UBadge>
+              <UBadge color="neutral" variant="soft">
+                {{ isSupabaseConfigured ? 'RLS protected realtime' : 'Local demo' }}
+              </UBadge>
             </div>
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
             <p class="mt-4 max-w-2xl text-lg muted">{{ couple.subtitle }}</p>
@@ -138,13 +134,13 @@ onMounted(async () => {
     </div>
 
     <div v-if="loading" class="grid gap-4 md:grid-cols-3">
-      <Skeleton v-for="item in 6" :key="item" height="11rem" />
+      <USkeleton v-for="item in 6" :key="item" class="h-44" />
     </div>
 
     <section class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-black">Core Couple Metrics</h2>
-        <Tag severity="info" :value="`${sharedWidgets.length} visible`" />
+        <UBadge color="info" variant="soft">{{ sharedWidgets.length }} visible</UBadge>
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricTile v-for="widget in sharedWidgets" :key="widget.id" :widget="widget" />
@@ -154,7 +150,7 @@ onMounted(async () => {
     <section class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-black">Person Metrics</h2>
-        <Tag severity="secondary" :value="`${personWidgets.length} visible`" />
+        <UBadge color="neutral" variant="soft">{{ personWidgets.length }} visible</UBadge>
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricTile
@@ -189,8 +185,7 @@ onMounted(async () => {
   </section>
 
   <section v-else class="mx-auto max-w-xl space-y-4">
-    <Card>
-      <template #content>
+    <UCard>
       <form class="form-stack" @submit.prevent="claimDisplay">
         <div>
           <h1 class="text-2xl font-black">Claim Display</h1>
@@ -199,18 +194,17 @@ onMounted(async () => {
           </p>
         </div>
 
-        <Message v-if="error || claimError" severity="warn" :closable="false">{{ claimError ?? error }}</Message>
+        <UAlert v-if="error || claimError" color="warning" variant="soft" :description="claimError ?? error ?? ''" />
 
-        <InputText
+        <UInput
           v-model="displayToken"
           autocomplete="off"
-          fluid
+          class="w-full"
           placeholder="Private display token"
           type="password"
         />
-        <Button label="Claim Raspberry Pi display" :loading="claiming" type="submit" />
+        <UButton label="Claim Raspberry Pi display" :loading="claiming" type="submit" />
       </form>
-      </template>
-    </Card>
+    </UCard>
   </section>
 </template>

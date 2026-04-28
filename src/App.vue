@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
 import { RouterLink, RouterView } from 'vue-router'
 import ThemeController from '@/components/ThemeController.vue'
 </script>
@@ -13,7 +12,7 @@ import ThemeController from '@/components/ThemeController.vue'
         <div class="flex items-center gap-2">
           <ThemeController />
           <RouterLink v-slot="{ navigate }" custom to="/">
-            <Button label="Tenants" size="small" @click="navigate" />
+            <UButton label="Tenants" size="sm" @click="navigate" />
           </RouterLink>
         </div>
       </div>

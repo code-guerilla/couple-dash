@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
@@ -60,23 +57,26 @@ onMounted(() => void acceptInvite())
   <section class="mx-auto max-w-md space-y-4">
     <AuthPanel v-if="isSupabaseConfigured && initialized && !isAuthenticated" @signed-in="acceptInvite" />
 
-    <Card v-else>
-      <template #title>Partner Invite</template>
-      <template #subtitle>
-          Accepting this invite links your Supabase account to this partner profile.
-      </template>
-      <template #content>
-        <div class="form-stack">
-
-        <Message v-if="acceptError" severity="error" :closable="false">{{ acceptError }}</Message>
-
-        <Message v-else-if="accepted" severity="success" :closable="false">
-          Invite accepted. Opening the private edit console.
-        </Message>
-
-        <Button label="Accept invite" :loading="accepting" type="button" @click="acceptInvite" />
+    <UCard v-else>
+      <template #header>
+        <div>
+          <h1 class="text-xl font-black">Partner Invite</h1>
+          <p class="text-sm muted">Accepting this invite links your Supabase account to this partner profile.</p>
         </div>
       </template>
-    </Card>
+
+      <div class="form-stack">
+        <UAlert v-if="acceptError" color="error" variant="soft" :description="acceptError" />
+
+        <UAlert
+          v-else-if="accepted"
+          color="success"
+          variant="soft"
+          description="Invite accepted. Opening the private edit console."
+        />
+
+        <UButton label="Accept invite" :loading="accepting" type="button" @click="acceptInvite" />
+      </div>
+    </UCard>
   </section>
 </template>
