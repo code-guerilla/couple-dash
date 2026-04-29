@@ -5,6 +5,7 @@ const initialized = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const userId = ref<string | null>(null)
+const userEmail = ref<string | null>(null)
 
 async function refreshSession() {
   if (!supabase) {
@@ -19,6 +20,7 @@ async function refreshSession() {
   }
 
   userId.value = data.session?.user.id ?? null
+  userEmail.value = data.session?.user.email ?? null
   initialized.value = true
 }
 
@@ -26,6 +28,7 @@ if (supabase) {
   void refreshSession()
   supabase.auth.onAuthStateChange((_event, session) => {
     userId.value = session?.user.id ?? null
+    userEmail.value = session?.user.email ?? null
     initialized.value = true
   })
 }
@@ -65,6 +68,27 @@ export function useSupabaseAuth() {
     }
   }
 
+  async function signInWithMagicLink(email: string, redirectTo = window.location.href) {
+    if (!supabase) {
+      return
+    }
+
+    loading.value = true
+    error.value = null
+    const { error: magicLinkError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    })
+    loading.value = false
+
+    if (magicLinkError) {
+      error.value = magicLinkError.message
+      throw magicLinkError
+    }
+  }
+
   async function signOut() {
     if (!supabase) {
       return
@@ -100,11 +124,13 @@ export function useSupabaseAuth() {
     loading: readonly(loading),
     error: readonly(error),
     userId: readonly(userId),
+    userEmail: readonly(userEmail),
     isAuthenticated,
     isSupabaseConfigured,
     refreshSession,
     signIn,
     signUp,
+    signInWithMagicLink,
     signOut,
     ensureAnonymousSession,
   }

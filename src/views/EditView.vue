@@ -154,7 +154,7 @@ onMounted(() => void loadPrivateEditor())
 
 <template>
   <section v-if="isSupabaseConfigured && initialized && !isAuthenticated" class="mx-auto max-w-md">
-    <AuthPanel @signed-in="loadPrivateEditor" />
+    <AuthPanel />
   </section>
 
   <section v-else-if="couple" class="mx-auto max-w-3xl space-y-6 pb-10">

@@ -10,6 +10,9 @@ const router = useRouter()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const partnerSlug = computed(() => String(route.params.partnerSlug))
 const inviteToken = computed(() => String(route.query.token ?? ''))
+const inviteRedirectTo = computed(() =>
+  typeof window === 'undefined' ? undefined : window.location.href,
+)
 const accepting = ref(false)
 const accepted = ref(false)
 const acceptError = ref<string | null>(null)
@@ -57,7 +60,7 @@ onMounted(() => void acceptInvite())
   <section class="mx-auto max-w-md space-y-4">
     <AuthPanel
       v-if="isSupabaseConfigured && initialized && !isAuthenticated"
-      @signed-in="acceptInvite"
+      :redirect-to="inviteRedirectTo"
     />
 
     <UCard v-else>

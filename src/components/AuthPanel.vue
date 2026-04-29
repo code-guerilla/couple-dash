@@ -2,23 +2,17 @@
 import { ref } from 'vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 
-const emit = defineEmits<{
-  signedIn: []
+const props = defineProps<{
+  redirectTo?: string
 }>()
 
-const { loading, error, signIn, signUp } = useSupabaseAuth()
+const { loading, error, signInWithMagicLink } = useSupabaseAuth()
 const email = ref('')
-const password = ref('')
-const mode = ref<'sign-in' | 'sign-up'>('sign-in')
+const sent = ref(false)
 
 async function submit() {
-  if (mode.value === 'sign-in') {
-    await signIn(email.value, password.value)
-  } else {
-    await signUp(email.value, password.value)
-  }
-
-  emit('signedIn')
+  await signInWithMagicLink(email.value, props.redirectTo)
+  sent.value = true
 }
 </script>
 
@@ -26,42 +20,32 @@ async function submit() {
   <UCard>
     <template #header>
       <div>
-        <h2 class="text-xl font-black">{{ mode === 'sign-in' ? 'Sign in' : 'Create account' }}</h2>
-        <p class="text-sm text-muted">Dashboard access uses Supabase Auth.</p>
+        <h2 class="text-xl font-black">Sign in</h2>
+        <p class="text-sm text-muted">Enter your email and we will send a private login link.</p>
       </div>
     </template>
 
     <form class="grid gap-4" @submit.prevent="submit">
       <UAlert v-if="error" color="error" variant="soft" :description="error" />
+      <UAlert
+        v-if="sent"
+        color="success"
+        variant="soft"
+        description="Check your email for the login link, then return to this page."
+      />
 
       <UFormField label="Email" required>
-        <UInput v-model="email" autocomplete="email" required type="email" class="w-full" />
-      </UFormField>
-
-      <UFormField label="Password" required>
         <UInput
-          v-model="password"
-          autocomplete="current-password"
-          minlength="6"
+          v-model="email"
+          autocomplete="email"
           required
-          type="password"
+          type="email"
           class="w-full"
+          placeholder="you@example.com"
         />
       </UFormField>
 
-      <UButton
-        :label="mode === 'sign-in' ? 'Sign in' : 'Create account'"
-        :loading="loading"
-        type="submit"
-      />
-
-      <UButton
-        :label="mode === 'sign-in' ? 'Need an account?' : 'Already have an account?'"
-        size="sm"
-        variant="ghost"
-        type="button"
-        @click="mode = mode === 'sign-in' ? 'sign-up' : 'sign-in'"
-      />
+      <UButton icon="i-lucide-mail" label="Send login link" :loading="loading" type="submit" />
     </form>
   </UCard>
 </template>

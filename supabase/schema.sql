@@ -396,6 +396,406 @@ begin
 end;
 $$;
 
+create or replace function public.admin_list_tenants()
+returns table (
+  couple_id uuid,
+  slug text,
+  name text,
+  subtitle text,
+  relationship_start date,
+  wedding_date date,
+  anniversary_date date,
+  theme text,
+  partner_count bigint,
+  accepted_partner_count bigint,
+  widget_count bigint,
+  active_alert_count bigint,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    couple.id,
+    couple.slug,
+    couple.name,
+    couple.subtitle,
+    couple.relationship_start,
+    couple.wedding_date,
+    couple.anniversary_date,
+    couple.theme,
+    count(distinct partner.id) as partner_count,
+    count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count,
+    count(distinct widget.id) as widget_count,
+    count(distinct alert.id) filter (where alert.active = true) as active_alert_count,
+    couple.created_at
+  from public.couple couple
+  left join public.partner partner on partner.couple_id = couple.id
+  left join public.dashboard_widget widget on widget.couple_id = couple.id
+  left join public.couple_alert alert on alert.couple_id = couple.id
+  where public.is_app_admin()
+  group by couple.id
+  order by couple.created_at desc;
+$$;
+
+create or replace function public.admin_create_tenant(
+  p_slug text,
+  p_name text,
+  p_subtitle text,
+  p_relationship_start date,
+  p_wedding_date date,
+  p_anniversary_date date,
+  p_theme text,
+  p_partner_a_name text,
+  p_partner_a_slug text,
+  p_partner_b_name text,
+  p_partner_b_slug text
+) returns table (
+  couple_id uuid,
+  slug text,
+  display_token text,
+  partner_a_slug text,
+  partner_a_invite_token text,
+  partner_b_slug text,
+  partner_b_invite_token text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  new_couple_id uuid;
+  normalized_slug text := lower(regexp_replace(trim(p_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+  normalized_partner_a_slug text := lower(regexp_replace(trim(p_partner_a_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+  normalized_partner_b_slug text := lower(regexp_replace(trim(p_partner_b_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+  next_display_token text := encode(extensions.gen_random_bytes(18), 'hex');
+  next_partner_a_token text := encode(extensions.gen_random_bytes(18), 'hex');
+  next_partner_b_token text := encode(extensions.gen_random_bytes(18), 'hex');
+  partner_a_id uuid;
+  partner_b_id uuid;
+begin
+  if not public.is_app_admin() then
+    raise exception 'Not allowed';
+  end if;
+
+  normalized_slug := trim(both '-' from normalized_slug);
+  normalized_partner_a_slug := trim(both '-' from normalized_partner_a_slug);
+  normalized_partner_b_slug := trim(both '-' from normalized_partner_b_slug);
+
+  if normalized_slug = '' then
+    raise exception 'Tenant slug is required';
+  end if;
+
+  if normalized_partner_a_slug = '' or normalized_partner_b_slug = '' then
+    raise exception 'Partner slugs are required';
+  end if;
+
+  if normalized_partner_a_slug = normalized_partner_b_slug then
+    raise exception 'Partner slugs must be different';
+  end if;
+
+  insert into public.couple (
+    slug,
+    name,
+    subtitle,
+    relationship_start,
+    wedding_date,
+    anniversary_date,
+    theme,
+    display_token_hash,
+    created_by
+  ) values (
+    normalized_slug,
+    trim(p_name),
+    coalesce(trim(p_subtitle), ''),
+    p_relationship_start,
+    p_wedding_date,
+    p_anniversary_date,
+    coalesce(nullif(trim(p_theme), ''), 'night'),
+    extensions.crypt(next_display_token, extensions.gen_salt('bf')),
+    auth.uid()
+  )
+  returning id into new_couple_id;
+
+  insert into public.partner (couple_id, slug, name, role, accent, invite_token_hash)
+  values (
+    new_couple_id,
+    normalized_partner_a_slug,
+    trim(p_partner_a_name),
+    'Partner',
+    'primary',
+    extensions.crypt(next_partner_a_token, extensions.gen_salt('bf'))
+  )
+  returning id into partner_a_id;
+
+  insert into public.partner (couple_id, slug, name, role, accent, invite_token_hash)
+  values (
+    new_couple_id,
+    normalized_partner_b_slug,
+    trim(p_partner_b_name),
+    'Partner',
+    'secondary',
+    extensions.crypt(next_partner_b_token, extensions.gen_salt('bf'))
+  )
+  returning id into partner_b_id;
+
+  insert into public.dashboard_widget (
+    couple_id,
+    label,
+    value,
+    detail,
+    scope,
+    person_id,
+    visual,
+    sort_order,
+    max_value,
+    numeric_value,
+    tone
+  ) values
+    (new_couple_id, 'Days Together', '0', 'Update this together from the partner console.', 'shared', null, 'stat', 1, null, null, 'info'),
+    (new_couple_id, 'Wedding Countdown', 'Set', 'Keep the next milestone visible on the dashboard.', 'shared', null, 'stat', 2, null, null, 'success'),
+    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 3, null, null, 'info'),
+    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 4, null, null, 'info');
+
+  insert into public.couple_alert (couple_id, title, detail, severity, source)
+  values (
+    new_couple_id,
+    'Dashboard created',
+    'Invite both partners and claim the private display session.',
+    'success',
+    'system'
+  );
+
+  couple_id := new_couple_id;
+  slug := normalized_slug;
+  display_token := next_display_token;
+  partner_a_slug := normalized_partner_a_slug;
+  partner_a_invite_token := next_partner_a_token;
+  partner_b_slug := normalized_partner_b_slug;
+  partner_b_invite_token := next_partner_b_token;
+  return next;
+end;
+$$;
+
+create or replace function public.admin_get_tenant(p_couple_id uuid)
+returns table (
+  couple_id uuid,
+  slug text,
+  name text,
+  subtitle text,
+  relationship_start date,
+  wedding_date date,
+  anniversary_date date,
+  theme text,
+  partners jsonb
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    couple.id,
+    couple.slug,
+    couple.name,
+    couple.subtitle,
+    couple.relationship_start,
+    couple.wedding_date,
+    couple.anniversary_date,
+    couple.theme,
+    coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', partner.id,
+          'slug', partner.slug,
+          'name', partner.name,
+          'role', partner.role,
+          'accent', partner.accent,
+          'accepted', partner.user_id is not null
+        )
+        order by partner.created_at
+      ) filter (where partner.id is not null),
+      '[]'::jsonb
+    ) as partners
+  from public.couple couple
+  left join public.partner partner on partner.couple_id = couple.id
+  where public.is_app_admin()
+    and couple.id = p_couple_id
+  group by couple.id;
+$$;
+
+create or replace function public.admin_update_tenant(
+  p_couple_id uuid,
+  p_slug text,
+  p_name text,
+  p_subtitle text,
+  p_relationship_start date,
+  p_wedding_date date,
+  p_anniversary_date date,
+  p_theme text,
+  p_partner_a_id uuid,
+  p_partner_a_name text,
+  p_partner_a_slug text,
+  p_partner_b_id uuid,
+  p_partner_b_name text,
+  p_partner_b_slug text
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  normalized_slug text := lower(regexp_replace(trim(p_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+  normalized_partner_a_slug text := lower(regexp_replace(trim(p_partner_a_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+  normalized_partner_b_slug text := lower(regexp_replace(trim(p_partner_b_slug), '[^a-zA-Z0-9]+', '-', 'g'));
+begin
+  if not public.is_app_admin() then
+    raise exception 'Not allowed';
+  end if;
+
+  normalized_slug := trim(both '-' from normalized_slug);
+  normalized_partner_a_slug := trim(both '-' from normalized_partner_a_slug);
+  normalized_partner_b_slug := trim(both '-' from normalized_partner_b_slug);
+
+  if normalized_slug = '' then
+    raise exception 'Tenant slug is required';
+  end if;
+
+  if normalized_partner_a_slug = '' or normalized_partner_b_slug = '' then
+    raise exception 'Partner slugs are required';
+  end if;
+
+  if normalized_partner_a_slug = normalized_partner_b_slug then
+    raise exception 'Partner slugs must be different';
+  end if;
+
+  update public.couple
+    set slug = normalized_slug,
+        name = trim(p_name),
+        subtitle = coalesce(trim(p_subtitle), ''),
+        relationship_start = p_relationship_start,
+        wedding_date = p_wedding_date,
+        anniversary_date = p_anniversary_date,
+        theme = coalesce(nullif(trim(p_theme), ''), 'night')
+  where id = p_couple_id;
+
+  if not found then
+    raise exception 'Tenant not found';
+  end if;
+
+  update public.partner
+    set name = trim(p_partner_a_name),
+        slug = normalized_partner_a_slug
+  where id = p_partner_a_id
+    and couple_id = p_couple_id;
+
+  update public.partner
+    set name = trim(p_partner_b_name),
+        slug = normalized_partner_b_slug
+  where id = p_partner_b_id
+    and couple_id = p_couple_id;
+end;
+$$;
+
+create or replace function public.admin_regenerate_tenant_credentials(p_couple_id uuid)
+returns table (
+  couple_id uuid,
+  slug text,
+  display_token text,
+  partner_a_slug text,
+  partner_a_invite_token text,
+  partner_b_slug text,
+  partner_b_invite_token text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_couple public.couple%rowtype;
+  first_partner public.partner%rowtype;
+  second_partner public.partner%rowtype;
+  next_display_token text := encode(extensions.gen_random_bytes(18), 'hex');
+  next_partner_a_token text := encode(extensions.gen_random_bytes(18), 'hex');
+  next_partner_b_token text := encode(extensions.gen_random_bytes(18), 'hex');
+begin
+  if not public.is_app_admin() then
+    raise exception 'Not allowed';
+  end if;
+
+  select *
+    into target_couple
+  from public.couple couple
+  where couple.id = p_couple_id;
+
+  if target_couple.id is null then
+    raise exception 'Tenant not found';
+  end if;
+
+  select *
+    into first_partner
+  from public.partner partner
+  where partner.couple_id = p_couple_id
+  order by partner.created_at
+  limit 1;
+
+  select *
+    into second_partner
+  from public.partner partner
+  where partner.couple_id = p_couple_id
+    and partner.id <> first_partner.id
+  order by partner.created_at
+  limit 1;
+
+  if first_partner.id is null or second_partner.id is null then
+    raise exception 'Tenant needs two partners before credentials can be generated';
+  end if;
+
+  update public.couple
+    set display_token_hash = extensions.crypt(next_display_token, extensions.gen_salt('bf'))
+  where id = p_couple_id;
+
+  update public.partner
+    set invite_token_hash = extensions.crypt(next_partner_a_token, extensions.gen_salt('bf'))
+  where id = first_partner.id;
+
+  update public.partner
+    set invite_token_hash = extensions.crypt(next_partner_b_token, extensions.gen_salt('bf'))
+  where id = second_partner.id;
+
+  couple_id := target_couple.id;
+  slug := target_couple.slug;
+  display_token := next_display_token;
+  partner_a_slug := first_partner.slug;
+  partner_a_invite_token := next_partner_a_token;
+  partner_b_slug := second_partner.slug;
+  partner_b_invite_token := next_partner_b_token;
+  return next;
+end;
+$$;
+
+create or replace function public.admin_delete_tenant(p_couple_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_app_admin() then
+    raise exception 'Not allowed';
+  end if;
+
+  delete from public.couple
+  where id = p_couple_id;
+
+  if not found then
+    raise exception 'Tenant not found';
+  end if;
+end;
+$$;
+
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
   p_label text,
@@ -840,6 +1240,12 @@ grant execute on function public.is_couple_member(uuid) to authenticated;
 grant execute on function public.is_display_device_for_couple(uuid) to authenticated;
 grant execute on function public.claim_display_device(text, text) to authenticated;
 grant execute on function public.accept_partner_invite(text, text, text) to authenticated;
+grant execute on function public.admin_list_tenants() to authenticated;
+grant execute on function public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text, text) to authenticated;
+grant execute on function public.admin_get_tenant(uuid) to authenticated;
+grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, text, uuid, text, text, uuid, text, text) to authenticated;
+grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
+grant execute on function public.admin_delete_tenant(uuid) to authenticated;
 grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric) to authenticated;
 grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text) to authenticated;
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
@@ -880,3 +1286,4 @@ begin
   end if;
 end $$;
 
+notify pgrst, 'reload schema';
