@@ -31,13 +31,19 @@ watchEffect(async () => {
     :to="url"
     :ui="{ body: 'flex items-center gap-3 p-3 sm:p-3' }"
   >
-    <img class="qr-image" :src="dataUrl" :alt="label" />
+    <img
+      class="h-20 w-20 shrink-0 rounded-md border border-default bg-white p-1"
+      :src="dataUrl"
+      :alt="label"
+    />
     <span class="min-w-0">
-      <span class="block text-xs font-semibold uppercase muted">
+      <span class="block text-xs font-semibold uppercase text-muted">
         {{ person }}
       </span>
       <span class="block text-sm font-bold leading-tight">{{ label }}</span>
-      <span class="mt-1 block truncate-line text-xs muted">Scan to edit live</span>
+      <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted"
+        >Scan to edit live</span
+      >
     </span>
   </UCard>
 </template>

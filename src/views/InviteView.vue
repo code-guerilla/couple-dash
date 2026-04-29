@@ -64,13 +64,13 @@ onMounted(() => void acceptInvite())
       <template #header>
         <div>
           <h1 class="text-xl font-black">Partner Invite</h1>
-          <p class="text-sm muted">
+          <p class="text-sm text-muted">
             Accepting this invite links your Supabase account to this partner profile.
           </p>
         </div>
       </template>
 
-      <div class="form-stack">
+      <div class="grid gap-4">
         <UAlert v-if="acceptError" color="error" variant="soft" :description="acceptError" />
 
         <UAlert

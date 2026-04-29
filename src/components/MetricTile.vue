@@ -41,7 +41,7 @@ const meterValues = computed(() => [
     <div class="grid gap-4">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <p class="text-sm font-medium muted">{{ widget.label }}</p>
+          <p class="text-sm font-medium text-muted">{{ widget.label }}</p>
           <h2
             class="mt-1 break-words text-2xl font-black leading-tight sm:text-3xl"
             :class="toneClasses[widget.tone]"
@@ -56,7 +56,7 @@ const meterValues = computed(() => [
 
       <div v-if="widget.visual === 'radial'" class="flex items-center gap-4">
         <div
-          class="metric-radial"
+          class="grid h-22 w-22 shrink-0 place-items-center rounded-full text-sm font-black [background:radial-gradient(circle_at_center,var(--ui-bg)_55%,transparent_56%),conic-gradient(var(--metric-color)_calc(var(--metric-value)*1%),var(--ui-bg-elevated)_0)]"
           :style="{
             '--metric-color': toneColors[widget.tone],
             '--metric-value': String(widget.numericValue ?? 0),
@@ -64,29 +64,30 @@ const meterValues = computed(() => [
         >
           {{ widget.numericValue ?? 0 }}%
         </div>
-        <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
+        <p class="text-sm leading-relaxed text-muted">{{ widget.detail }}</p>
       </div>
 
       <template v-else-if="widget.visual === 'progress' || widget.visual === 'line'">
         <UProgress :model-value="widget.numericValue ?? 0" />
-        <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
+        <p class="text-sm leading-relaxed text-muted">{{ widget.detail }}</p>
       </template>
 
       <template v-else-if="widget.visual === 'bar'">
-        <div class="metric-meter" aria-hidden="true">
+        <div class="flex h-3 overflow-hidden rounded-full bg-elevated" aria-hidden="true">
           <span
             v-for="meter in meterValues"
             :key="meter.label"
+            class="h-full"
             :style="{ width: `${meter.value}%`, background: meter.color }"
           />
         </div>
-        <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
+        <p class="text-sm leading-relaxed text-muted">{{ widget.detail }}</p>
       </template>
 
       <template v-else-if="widget.visual === 'doughnut'">
         <div class="flex items-center gap-4">
           <div
-            class="metric-radial"
+            class="grid h-22 w-22 shrink-0 place-items-center rounded-full text-sm font-black [background:radial-gradient(circle_at_center,var(--ui-bg)_55%,transparent_56%),conic-gradient(var(--metric-color)_calc(var(--metric-value)*1%),var(--ui-bg-elevated)_0)]"
             :style="{
               '--metric-color': 'var(--ui-primary)',
               '--metric-value': String(widget.numericValue ?? 0),
@@ -94,22 +95,24 @@ const meterValues = computed(() => [
           >
             {{ widget.numericValue ?? 0 }}%
           </div>
-          <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
+          <p class="text-sm leading-relaxed text-muted">{{ widget.detail }}</p>
         </div>
       </template>
 
       <template v-else-if="widget.visual === 'memory'">
         <div class="rounded-md border border-default bg-muted p-4">
           <p class="text-sm font-semibold leading-relaxed">{{ widget.value }}</p>
-          <p class="mt-2 text-xs muted">{{ widget.detail }}</p>
+          <p class="mt-2 text-xs text-muted">{{ widget.detail }}</p>
         </div>
       </template>
 
       <template v-else>
-        <p class="text-sm leading-relaxed muted">{{ widget.detail }}</p>
+        <p class="text-sm leading-relaxed text-muted">{{ widget.detail }}</p>
       </template>
 
-      <p class="text-xs subtle">Updated {{ new Date(widget.updatedAt).toLocaleTimeString() }}</p>
+      <p class="text-xs text-dimmed opacity-75">
+        Updated {{ new Date(widget.updatedAt).toLocaleTimeString() }}
+      </p>
     </div>
   </UCard>
 </template>

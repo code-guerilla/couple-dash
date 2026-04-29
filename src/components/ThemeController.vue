@@ -5,26 +5,15 @@ import { useThemeSettings } from '@/composables/useThemeSettings'
 
 const open = ref(false)
 
-const {
-  neutralColors,
-  neutral,
-  primaryColors,
-  primary,
-  radiuses,
-  radius,
-  fonts,
-  font,
-  modes,
-  mode,
-} = useThemeSettings()
+const { neutralColors, neutral, primaryColors, primary, radiuses, radius, fonts, font } =
+  useThemeSettings()
 
 function chipColor(chip: string) {
-  const color = chip === 'neutral' ? 'zinc' : chip
-  const palette = colors[color as keyof typeof colors]
+  const palette = colors[chip as keyof typeof colors]
 
   return typeof palette === 'object' && palette && '500' in palette
     ? (palette as Record<string, string>)['500']
-    : color
+    : chip
 }
 </script>
 
@@ -33,64 +22,72 @@ function chipColor(chip: string) {
     v-model:open="open"
     :ui="{ content: 'w-72 px-6 py-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-5rem)]' }"
   >
-    <UButton
-      icon="i-lucide-swatch-book"
-      color="neutral"
-      :variant="open ? 'soft' : 'ghost'"
-      square
-      aria-label="Color picker"
-      :ui="{ leadingIcon: 'text-primary' }"
-    />
+    <UTooltip text="Theme settings">
+      <UButton
+        icon="i-lucide-swatch-book"
+        color="neutral"
+        :variant="open ? 'soft' : 'ghost'"
+        square
+        aria-label="Theme settings"
+        :ui="{ leadingIcon: 'text-primary' }"
+      />
+    </UTooltip>
 
     <template #content>
       <fieldset>
-        <legend class="theme-picker-legend">Primary</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">Primary</legend>
 
-        <div class="theme-picker-grid theme-picker-grid-primary">
+        <div class="-mx-2 grid grid-cols-3 gap-1">
           <UButton
             v-for="color in primaryColors"
             :key="color"
             color="neutral"
             size="sm"
             :variant="primary === color ? 'soft' : 'outline'"
-            class="theme-picker-button"
-            :ui="{ label: 'truncate text-[11px] leading-none' }"
+            class="min-w-0 justify-start gap-1 px-2 text-xs capitalize"
+            :ui="{ label: 'truncate text-xs leading-none' }"
             @click="primary = color"
           >
-            <span class="theme-picker-button-content">
-              <span class="theme-picker-chip" :style="{ backgroundColor: chipColor(color) }" />
-              <span class="theme-picker-label">{{ color }}</span>
+            <span class="flex min-w-0 items-center gap-1">
+              <span
+                class="inline-block size-2 shrink-0 rounded-full ring-1 ring-default"
+                :style="{ backgroundColor: chipColor(color) }"
+              />
+              <span class="min-w-0 truncate text-xs leading-none">{{ color }}</span>
             </span>
           </UButton>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend class="theme-picker-legend">Neutral</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">Neutral</legend>
 
-        <div class="theme-picker-grid theme-picker-grid-primary">
+        <div class="-mx-2 grid grid-cols-3 gap-1">
           <UButton
             v-for="color in neutralColors"
             :key="color"
             color="neutral"
             size="sm"
             :variant="neutral === color ? 'soft' : 'outline'"
-            class="theme-picker-button"
-            :ui="{ label: 'truncate text-[11px] leading-none' }"
+            class="min-w-0 justify-start gap-1 px-2 text-xs capitalize"
+            :ui="{ label: 'truncate text-xs leading-none' }"
             @click="neutral = color"
           >
-            <span class="theme-picker-button-content">
-              <span class="theme-picker-chip" :style="{ backgroundColor: chipColor(color) }" />
-              <span class="theme-picker-label">{{ color }}</span>
+            <span class="flex min-w-0 items-center gap-1">
+              <span
+                class="inline-block size-2 shrink-0 rounded-full ring-1 ring-default"
+                :style="{ backgroundColor: chipColor(color) }"
+              />
+              <span class="min-w-0 truncate text-xs leading-none">{{ color }}</span>
             </span>
           </UButton>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend class="theme-picker-legend">Radius</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">Radius</legend>
 
-        <div class="theme-picker-grid theme-picker-grid-radius">
+        <div class="-mx-2 grid grid-cols-5 gap-1">
           <UButton
             v-for="r in radiuses"
             :key="r"
@@ -98,48 +95,27 @@ function chipColor(chip: string) {
             color="neutral"
             size="sm"
             :variant="radius === r ? 'soft' : 'outline'"
-            class="theme-picker-button justify-center px-0"
-            :ui="{ label: 'truncate text-[11px] leading-none' }"
+            class="justify-center px-0 text-xs"
+            :ui="{ label: 'truncate text-xs leading-none' }"
             @click="radius = r"
           />
         </div>
       </fieldset>
 
       <fieldset>
-        <legend class="theme-picker-legend">Font</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">Font</legend>
 
-        <div class="-mx-2">
-          <USelect
-            v-model="font"
-            size="sm"
-            color="neutral"
-            icon="i-lucide-type"
-            :items="fonts"
-            class="w-full rounded-sm text-[11px] ring-default hover:bg-elevated/50 data-[state=open]:bg-elevated/50"
-            :ui="{
-              trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200',
-            }"
-          />
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend class="theme-picker-legend">Color Mode</legend>
-
-        <div class="theme-picker-grid theme-picker-grid-primary">
-          <UButton
-            v-for="m in modes"
-            :key="m.value"
-            :label="m.label"
-            :icon="m.icon"
-            color="neutral"
-            size="sm"
-            :variant="mode === m.value ? 'soft' : 'outline'"
-            class="theme-picker-button"
-            :ui="{ leadingIcon: 'size-3.5 shrink-0', label: 'truncate text-[11px] leading-none' }"
-            @click="mode = m.value"
-          />
-        </div>
+        <USelect
+          v-model="font"
+          size="sm"
+          color="neutral"
+          icon="i-lucide-type"
+          :items="fonts"
+          class="-mx-2 w-[calc(100%+1rem)]"
+          :ui="{
+            trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200',
+          }"
+        />
       </fieldset>
     </template>
   </UPopover>

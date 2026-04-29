@@ -27,11 +27,11 @@ async function submit() {
     <template #header>
       <div>
         <h2 class="text-xl font-black">{{ mode === 'sign-in' ? 'Sign in' : 'Create account' }}</h2>
-        <p class="text-sm muted">Dashboard access uses Supabase Auth.</p>
+        <p class="text-sm text-muted">Dashboard access uses Supabase Auth.</p>
       </div>
     </template>
 
-    <form class="form-stack" @submit.prevent="submit">
+    <form class="grid gap-4" @submit.prevent="submit">
       <UAlert v-if="error" color="error" variant="soft" :description="error" />
 
       <UFormField label="Email" required>

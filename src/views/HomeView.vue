@@ -13,7 +13,7 @@ const { couples } = useDashboardStore()
       <h1 class="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">
         A tiny always-on command center for wedding-grade household operations.
       </h1>
-      <p class="max-w-2xl text-lg muted">
+      <p class="max-w-2xl text-lg text-muted">
         Private couple dashboards are loaded only after a partner, display, or app admin session is
         authenticated.
       </p>
@@ -22,15 +22,19 @@ const { couples } = useDashboardStore()
     <div v-if="isSupabaseConfigured" class="grid gap-4 md:grid-cols-3">
       <UCard :as="RouterLink" to="/admin" class="transition-transform hover:-translate-y-0.5">
         <template #header><h2 class="font-black">Admin</h2></template>
-        <p class="muted">Sign in and verify app_admin access.</p>
+        <p class="text-muted">Sign in and verify app_admin access.</p>
       </UCard>
       <UCard>
         <template #header><h2 class="font-black">Display</h2></template>
-        <p class="muted">Open a private /display/:slug URL and claim it with the display token.</p>
+        <p class="text-muted">
+          Open a private /display/:slug URL and claim it with the display token.
+        </p>
       </UCard>
       <UCard>
         <template #header><h2 class="font-black">Partner</h2></template>
-        <p class="muted">Partners use /invite links once, then /edit/:slug with Supabase Auth.</p>
+        <p class="text-muted">
+          Partners use /invite links once, then /edit/:slug with Supabase Auth.
+        </p>
       </UCard>
     </div>
 
@@ -46,7 +50,7 @@ const { couples } = useDashboardStore()
           <div class="flex items-start justify-between gap-4">
             <div>
               <h2 class="text-3xl font-black">{{ couple.name }}</h2>
-              <p class="mt-1 text-base font-normal muted">{{ couple.subtitle }}</p>
+              <p class="mt-1 text-base font-normal text-muted">{{ couple.subtitle }}</p>
             </div>
             <UBadge color="success" variant="soft">Production</UBadge>
           </div>
@@ -54,11 +58,11 @@ const { couples } = useDashboardStore()
 
         <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-md bg-muted p-3 ring ring-default">
-            <p class="muted">Wedding</p>
+            <p class="text-muted">Wedding</p>
             <p class="font-bold">{{ new Date(couple.weddingDate).toLocaleDateString() }}</p>
           </div>
           <div class="rounded-md bg-muted p-3 ring ring-default">
-            <p class="muted">Partners</p>
+            <p class="text-muted">Partners</p>
             <p class="font-bold">
               {{ couple.partners.map((partner) => partner.name).join(' + ') }}
             </p>

@@ -43,7 +43,7 @@ onMounted(() => void checkAdmin())
         <div class="flex items-center justify-between gap-4">
           <div>
             <h1 class="text-2xl font-black">Admin</h1>
-            <p class="text-sm muted">App admins can manage all private dashboard tenants.</p>
+            <p class="text-sm text-muted">App admins can manage all private dashboard tenants.</p>
           </div>
           <UButton
             label="Check access"

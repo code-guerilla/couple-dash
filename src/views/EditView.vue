@@ -160,7 +160,7 @@ onMounted(() => void loadPrivateEditor())
   <section v-else-if="couple" class="mx-auto max-w-3xl space-y-6 pb-10">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-semibold muted">{{ couple.name }}</p>
+        <p class="text-sm font-semibold text-muted">{{ couple.name }}</p>
         <h1 class="text-3xl font-black">{{ partner?.name ?? 'Partner' }} console</h1>
       </div>
       <UButton
@@ -181,21 +181,25 @@ onMounted(() => void loadPrivateEditor())
 
     <div class="grid gap-4 sm:grid-cols-2">
       <UCard variant="subtle">
-        <div class="stat-label">Editable Metrics</div>
-        <div class="stat-value">{{ editableWidgets.length }}</div>
-        <div class="stat-note">Shared plus your own personal widgets</div>
+        <div class="text-sm text-muted">Editable Metrics</div>
+        <div class="mt-1 text-4xl font-black leading-none sm:text-5xl">
+          {{ editableWidgets.length }}
+        </div>
+        <div class="mt-1 text-sm text-muted">Shared plus your own personal widgets</div>
       </UCard>
       <UCard variant="subtle">
-        <div class="stat-label">Active Alerts</div>
-        <div class="stat-value text-amber-500">{{ alerts.length }}</div>
-        <div class="stat-note">Visible on display</div>
+        <div class="text-sm text-muted">Active Alerts</div>
+        <div class="mt-1 text-4xl font-black leading-none text-amber-500 sm:text-5xl">
+          {{ alerts.length }}
+        </div>
+        <div class="mt-1 text-sm text-muted">Visible on display</div>
       </UCard>
     </div>
 
     <UCard>
       <template #header><h2 class="text-xl font-black">Add Widget</h2></template>
 
-      <form class="form-stack" @submit.prevent="createWidget">
+      <form class="grid gap-4" @submit.prevent="createWidget">
         <UFormField label="Metric key" required>
           <UInput v-model="newWidget.label" class="w-full" placeholder="Blanket Ownership" />
         </UFormField>
@@ -254,7 +258,7 @@ onMounted(() => void loadPrivateEditor())
     <section class="space-y-3">
       <h2 class="text-xl font-black">Edit Live Metrics</h2>
       <UCard v-for="widget in editableWidgets" :key="widget.id">
-        <form class="form-stack" @submit.prevent="saveWidget(widget)">
+        <form class="grid gap-4" @submit.prevent="saveWidget(widget)">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
               <UBadge :color="widget.scope === 'shared' ? 'info' : 'neutral'" variant="soft">{{

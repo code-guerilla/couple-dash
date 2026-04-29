@@ -1,26 +1,51 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import type { NavigationMenuItem } from '@nuxt/ui'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import ThemeController from '@/components/ThemeController.vue'
+
+const route = useRoute()
+
+const items = computed<NavigationMenuItem[]>(() => [
+  {
+    label: 'Home',
+    icon: 'i-lucide-house',
+    to: '/',
+    active: route.name === 'home',
+  },
+  {
+    label: 'Admin',
+    icon: 'i-lucide-shield',
+    to: '/admin',
+    active: route.path.startsWith('/admin'),
+  },
+])
 </script>
 
 <template>
-  <div class="app-shell">
-    <div class="app-topbar px-4 py-3 sm:px-6">
-      <div class="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <RouterLink class="brand-link" to="/">
-            <span class="text-primary">Couple</span>
-            <span>Dash</span>
-          </RouterLink>
+  <UApp>
+    <UHeader title="CoupleDash" to="/" :toggle="{ color: 'neutral', variant: 'ghost' }">
+      <template #title>
+        <span class="text-primary">Couple</span>
+        <span>Dash</span>
+      </template>
 
-        <div class="flex items-center gap-2">
-          <ThemeController />
-          <UButton label="Tenants" size="sm" to="/" />
-        </div>
-      </div>
-    </div>
+      <UNavigationMenu :items="items" />
 
-    <main class="page-shell">
-      <RouterView />
-    </main>
-  </div>
+      <template #right>
+        <ThemeController />
+        <UColorModeButton />
+      </template>
+
+      <template #body>
+        <UNavigationMenu :items="items" orientation="vertical" class="-mx-2.5" />
+      </template>
+    </UHeader>
+
+    <UMain>
+      <UContainer class="py-8 sm:py-10">
+        <RouterView />
+      </UContainer>
+    </UMain>
+  </UApp>
 </template>

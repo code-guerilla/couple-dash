@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { CoupleAlert } from '@/types'
+import type { AlertProps } from '@nuxt/ui'
 
 defineProps<{
   alerts: CoupleAlert[]
 }>()
 
-const alertClasses: Record<CoupleAlert['severity'], string> = {
+const alertClasses: Record<CoupleAlert['severity'], AlertProps['color']> = {
   info: 'info',
   success: 'success',
   warning: 'warning',

@@ -113,7 +113,7 @@ onMounted(async () => {
               </UBadge>
             </div>
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
-            <p class="mt-4 max-w-2xl text-lg muted">{{ couple.subtitle }}</p>
+            <p class="mt-4 max-w-2xl text-lg text-muted">{{ couple.subtitle }}</p>
 
             <div
               class="mt-8 grid overflow-hidden rounded-md border border-default bg-default shadow-sm sm:grid-cols-3"
@@ -121,25 +121,33 @@ onMounted(async () => {
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="stat-label">Relationship Uptime</div>
-                <div class="stat-value text-green-500">{{ relationshipUptime }}</div>
-                <div class="stat-note">
+                <div class="text-sm text-muted">Relationship Uptime</div>
+                <div class="mt-1 text-4xl font-black leading-none text-green-500 sm:text-5xl">
+                  {{ relationshipUptime }}
+                </div>
+                <div class="mt-1 text-sm text-muted">
                   Since {{ new Date(couple.relationshipStart).toLocaleDateString() }}
                 </div>
               </div>
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="stat-label">Days Until Wedding</div>
-                <div class="stat-value text-primary-500">{{ daysUntilWedding }}</div>
-                <div class="stat-note">{{ new Date(couple.weddingDate).toLocaleDateString() }}</div>
+                <div class="text-sm text-muted">Days Until Wedding</div>
+                <div class="mt-1 text-4xl font-black leading-none text-primary-500 sm:text-5xl">
+                  {{ daysUntilWedding }}
+                </div>
+                <div class="mt-1 text-sm text-muted">
+                  {{ new Date(couple.weddingDate).toLocaleDateString() }}
+                </div>
               </div>
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="stat-label">Commitment Level</div>
-                <div class="stat-value text-primary-400">100%</div>
-                <div class="stat-note">No rollback configured</div>
+                <div class="text-sm text-muted">Commitment Level</div>
+                <div class="mt-1 text-4xl font-black leading-none text-primary-400 sm:text-5xl">
+                  100%
+                </div>
+                <div class="mt-1 text-sm text-muted">No rollback configured</div>
               </div>
             </div>
           </div>
@@ -202,10 +210,10 @@ onMounted(async () => {
 
   <section v-else class="mx-auto max-w-xl space-y-4">
     <UCard>
-      <form class="form-stack" @submit.prevent="claimDisplay">
+      <form class="grid gap-4" @submit.prevent="claimDisplay">
         <div>
           <h1 class="text-2xl font-black">Claim Display</h1>
-          <p class="text-sm muted">
+          <p class="text-sm text-muted">
             This screen needs an authenticated display session before it can read private dashboard
             data.
           </p>
