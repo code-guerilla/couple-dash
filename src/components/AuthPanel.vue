@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 
 const props = defineProps<{
   redirectTo?: string
 }>()
 
-const { loading, error, signInWithMagicLink } = useSupabaseAuth()
-const email = ref('')
-const sent = ref(false)
+const { loading, error, signInWithApple, signInWithGoogle } = useSupabaseAuth()
 
-async function submit() {
-  await signInWithMagicLink(email.value, props.redirectTo)
-  sent.value = true
+async function signInGoogle() {
+  await signInWithGoogle(props.redirectTo)
+}
+
+async function signInApple() {
+  await signInWithApple(props.redirectTo)
 }
 </script>
 
@@ -21,31 +21,28 @@ async function submit() {
     <template #header>
       <div>
         <h2 class="text-xl font-black">Sign in</h2>
-        <p class="text-sm text-muted">Enter your email and we will send a private login link.</p>
+        <p class="text-sm text-muted">Use Google or Apple to open this private dashboard.</p>
       </div>
     </template>
 
-    <form class="grid gap-4" @submit.prevent="submit">
+    <div class="grid gap-3">
       <UAlert v-if="error" color="error" variant="soft" :description="error" />
-      <UAlert
-        v-if="sent"
-        color="success"
-        variant="soft"
-        description="Check your email for the login link, then return to this page."
+
+      <UButton
+        icon="i-simple-icons-google"
+        label="Continue with Google"
+        :loading="loading"
+        type="button"
+        @click="signInGoogle"
       />
-
-      <UFormField label="Email" required>
-        <UInput
-          v-model="email"
-          autocomplete="email"
-          required
-          type="email"
-          class="w-full"
-          placeholder="you@example.com"
-        />
-      </UFormField>
-
-      <UButton icon="i-lucide-mail" label="Send login link" :loading="loading" type="submit" />
-    </form>
+      <UButton
+        icon="i-simple-icons-apple"
+        label="Continue with Apple"
+        :loading="loading"
+        color="neutral"
+        type="button"
+        @click="signInApple"
+      />
+    </div>
   </UCard>
 </template>

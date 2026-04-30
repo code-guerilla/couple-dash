@@ -68,24 +68,45 @@ export function useSupabaseAuth() {
     }
   }
 
-  async function signInWithMagicLink(email: string, redirectTo = window.location.href) {
+  async function signInWithGoogle(redirectTo = window.location.href) {
     if (!supabase) {
       return
     }
 
     loading.value = true
     error.value = null
-    const { error: magicLinkError } = await supabase.auth.signInWithOtp({
-      email,
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        emailRedirectTo: redirectTo,
+        redirectTo,
       },
     })
-    loading.value = false
 
-    if (magicLinkError) {
-      error.value = magicLinkError.message
-      throw magicLinkError
+    if (oauthError) {
+      loading.value = false
+      error.value = oauthError.message
+      throw oauthError
+    }
+  }
+
+  async function signInWithApple(redirectTo = window.location.href) {
+    if (!supabase) {
+      return
+    }
+
+    loading.value = true
+    error.value = null
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo,
+      },
+    })
+
+    if (oauthError) {
+      loading.value = false
+      error.value = oauthError.message
+      throw oauthError
     }
   }
 
@@ -130,7 +151,8 @@ export function useSupabaseAuth() {
     refreshSession,
     signIn,
     signUp,
-    signInWithMagicLink,
+    signInWithGoogle,
+    signInWithApple,
     signOut,
     ensureAnonymousSession,
   }
