@@ -36,38 +36,6 @@ if (supabase) {
 export function useSupabaseAuth() {
   const isAuthenticated = computed(() => !isSupabaseConfigured || Boolean(userId.value))
 
-  async function signIn(email: string, password: string) {
-    if (!supabase) {
-      return
-    }
-
-    loading.value = true
-    error.value = null
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    loading.value = false
-
-    if (signInError) {
-      error.value = signInError.message
-      throw signInError
-    }
-  }
-
-  async function signUp(email: string, password: string) {
-    if (!supabase) {
-      return
-    }
-
-    loading.value = true
-    error.value = null
-    const { error: signUpError } = await supabase.auth.signUp({ email, password })
-    loading.value = false
-
-    if (signUpError) {
-      error.value = signUpError.message
-      throw signUpError
-    }
-  }
-
   async function signInWithGoogle(redirectTo = window.location.href) {
     if (!supabase) {
       return
@@ -89,24 +57,24 @@ export function useSupabaseAuth() {
     }
   }
 
-  async function signInWithApple(redirectTo = window.location.href) {
+  async function sendMagicLink(email: string, redirectTo = window.location.href) {
     if (!supabase) {
       return
     }
 
     loading.value = true
     error.value = null
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
+    const { error: magicLinkError } = await supabase.auth.signInWithOtp({
+      email,
       options: {
-        redirectTo,
+        emailRedirectTo: redirectTo,
       },
     })
+    loading.value = false
 
-    if (oauthError) {
-      loading.value = false
-      error.value = oauthError.message
-      throw oauthError
+    if (magicLinkError) {
+      error.value = magicLinkError.message
+      throw magicLinkError
     }
   }
 
@@ -149,10 +117,8 @@ export function useSupabaseAuth() {
     isAuthenticated,
     isSupabaseConfigured,
     refreshSession,
-    signIn,
-    signUp,
     signInWithGoogle,
-    signInWithApple,
+    sendMagicLink,
     signOut,
     ensureAnonymousSession,
   }

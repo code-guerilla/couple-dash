@@ -1,48 +1,69 @@
 <script setup lang="ts">
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
+import { ref } from 'vue'
+import type { AuthFormField, ButtonProps, FormSubmitEvent } from '@nuxt/ui'
 
 const props = defineProps<{
   redirectTo?: string
 }>()
 
-const { loading, error, signInWithApple, signInWithGoogle } = useSupabaseAuth()
+type MagicLinkPayload = {
+  email: string
+}
+
+const { loading, error, signInWithGoogle, sendMagicLink } = useSupabaseAuth()
+const magicLinkSent = ref(false)
+
+const fields: AuthFormField[] = [
+  {
+    name: 'email',
+    type: 'email',
+    label: 'Email',
+    placeholder: 'you@example.com',
+    required: true,
+  },
+]
+
+const providers: ButtonProps[] = [
+  {
+    label: 'Continue with Google',
+    icon: 'i-simple-icons-google',
+    color: 'neutral',
+    variant: 'subtle',
+    onClick: signInGoogle,
+  },
+]
 
 async function signInGoogle() {
   await signInWithGoogle(props.redirectTo)
 }
 
-async function signInApple() {
-  await signInWithApple(props.redirectTo)
+async function submitMagicLink(event: FormSubmitEvent<MagicLinkPayload>) {
+  await sendMagicLink(event.data.email, props.redirectTo)
+  magicLinkSent.value = true
 }
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div>
-        <h2 class="text-xl font-black">Sign in</h2>
-        <p class="text-sm text-muted">Use Google or Apple to open this private dashboard.</p>
-      </div>
-    </template>
-
-    <div class="grid gap-3">
+  <UAuthForm
+    title="Sign in"
+    description="Use Google or an email magic link."
+    icon="i-lucide-lock"
+    :fields="fields"
+    :providers="providers"
+    :loading="loading"
+    :submit="{ label: 'Send magic link' }"
+    class="w-full max-w-md"
+    @submit="submitMagicLink"
+  >
+    <template #validation>
       <UAlert v-if="error" color="error" variant="soft" :description="error" />
-
-      <UButton
-        icon="i-simple-icons-google"
-        label="Continue with Google"
-        :loading="loading"
-        type="button"
-        @click="signInGoogle"
+      <UAlert
+        v-else-if="magicLinkSent"
+        color="success"
+        variant="soft"
+        description="Check your email for a secure sign-in link."
       />
-      <UButton
-        icon="i-simple-icons-apple"
-        label="Continue with Apple"
-        :loading="loading"
-        color="neutral"
-        type="button"
-        @click="signInApple"
-      />
-    </div>
-  </UCard>
+    </template>
+  </UAuthForm>
 </template>
