@@ -1,16 +1,24 @@
 import { computed, readonly, ref } from 'vue'
 import { defaultState } from '@/data/defaults'
+import { i18n } from '@/i18n'
+import { canStorePreferences } from '@/composables/usePrivacyConsent'
 import { isSupabaseConfigured, supabase } from '@/services/supabase'
 import type { CoupleAlert, DashboardState, DashboardWidget } from '@/types'
 
 const storageKey = 'couple-dash-state-v1'
 const channelName = 'couple-dash-realtime'
 const emptyState: DashboardState = { couples: [], widgets: [], alerts: [] }
-const state = ref<DashboardState>(isSupabaseConfigured ? emptyState : loadLocalState())
+const state = ref<DashboardState>(
+  isSupabaseConfigured ? emptyState : canStorePreferences() ? loadLocalState() : cloneDefaults(),
+)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const broadcast = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(channelName)
 let activeSubscription: { unsubscribe: () => void } | null = null
+
+function t(key: string) {
+  return i18n.global.t(key)
+}
 
 broadcast?.addEventListener('message', (event: MessageEvent<DashboardState>) => {
   if (!isSupabaseConfigured) {
@@ -38,6 +46,12 @@ function loadLocalState(): DashboardState {
 
 function persistLocalState() {
   if (isSupabaseConfigured) {
+    return
+  }
+
+  if (!canStorePreferences()) {
+    localStorage.removeItem(storageKey)
+    broadcast?.postMessage(state.value)
     return
   }
 
@@ -86,7 +100,7 @@ function mapSupabaseError(message: string) {
     message.includes('permission denied') ||
     message.includes('Results contain 0 rows')
   ) {
-    return 'No private dashboard is available for this authenticated session'
+    return t('dashboard.unavailable')
   }
 
   return message
@@ -128,7 +142,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
 
   if (widgetsError || alertsError) {
     error.value = mapSupabaseError(
-      widgetsError?.message ?? alertsError?.message ?? 'Supabase load failed',
+      widgetsError?.message ?? alertsError?.message ?? t('dashboard.supabaseLoadFailed'),
     )
     loading.value = false
     return

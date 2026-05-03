@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import colors from 'tailwindcss/colors'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useThemeSettings } from '@/composables/useThemeSettings'
 
 const open = ref(false)
+const { t } = useI18n()
 
 const { neutralColors, neutral, primaryColors, primary, radiuses, radius, fonts, font } =
   useThemeSettings()
@@ -22,20 +24,20 @@ function chipColor(chip: string) {
     v-model:open="open"
     :ui="{ content: 'w-72 px-6 py-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-5rem)]' }"
   >
-    <UTooltip text="Theme settings">
+    <UTooltip :text="t('theme.settings')">
       <UButton
         icon="i-lucide-swatch-book"
         color="neutral"
         :variant="open ? 'soft' : 'ghost'"
         square
-        aria-label="Theme settings"
+        :aria-label="t('theme.settings')"
         :ui="{ leadingIcon: 'text-primary' }"
       />
     </UTooltip>
 
     <template #content>
       <fieldset>
-        <legend class="mb-2 text-xs font-semibold text-muted">Primary</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">{{ t('theme.primary') }}</legend>
 
         <div class="-mx-2 grid grid-cols-3 gap-1">
           <UButton
@@ -60,7 +62,7 @@ function chipColor(chip: string) {
       </fieldset>
 
       <fieldset>
-        <legend class="mb-2 text-xs font-semibold text-muted">Neutral</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">{{ t('theme.neutral') }}</legend>
 
         <div class="-mx-2 grid grid-cols-3 gap-1">
           <UButton
@@ -85,7 +87,7 @@ function chipColor(chip: string) {
       </fieldset>
 
       <fieldset>
-        <legend class="mb-2 text-xs font-semibold text-muted">Radius</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">{{ t('theme.radius') }}</legend>
 
         <div class="-mx-2 grid grid-cols-5 gap-1">
           <UButton
@@ -103,7 +105,7 @@ function chipColor(chip: string) {
       </fieldset>
 
       <fieldset>
-        <legend class="mb-2 text-xs font-semibold text-muted">Font</legend>
+        <legend class="mb-2 text-xs font-semibold text-muted">{{ t('theme.font') }}</legend>
 
         <USelect
           v-model="font"

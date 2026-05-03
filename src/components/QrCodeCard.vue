@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QRCode from 'qrcode'
 import { computed, ref, watchEffect } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 
 const props = defineProps<{
@@ -11,6 +12,7 @@ const props = defineProps<{
 
 const dataUrl = ref('')
 const absoluteUrl = computed(() => new URL(props.url, window.location.origin).toString())
+const { t } = useI18n()
 
 watchEffect(async () => {
   dataUrl.value = await QRCode.toDataURL(absoluteUrl.value, {
@@ -41,9 +43,9 @@ watchEffect(async () => {
         {{ person }}
       </span>
       <span class="block text-sm font-bold leading-tight">{{ label }}</span>
-      <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted"
-        >Scan to edit live</span
-      >
+      <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted">
+        {{ t('qr.scanToEdit') }}
+      </span>
     </span>
   </UCard>
 </template>

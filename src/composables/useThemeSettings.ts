@@ -1,5 +1,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAppConfig } from '@nuxt/ui/runtime/vue/composables/useAppConfig.js'
+import { canStorePreferences } from '@/composables/usePrivacyConsent'
 
 type ThemeState = {
   primary: string
@@ -31,17 +32,32 @@ const primaryColors = [
 ]
 const neutralColors = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 const radiuses = [0, 0.125, 0.25, 0.375, 0.5]
-const fonts = ['Public Sans', 'DM Sans', 'Geist', 'Inter', 'Poppins', 'Outfit', 'Raleway']
+const fontStacks = {
+  Inter: '"Inter", system-ui, sans-serif',
+  'Atkinson Hyperlegible': '"Atkinson Hyperlegible", system-ui, sans-serif',
+  Merriweather: '"Merriweather", Georgia, serif',
+  'JetBrains Mono': '"JetBrains Mono", ui-monospace, monospace',
+  'Playfair Display': '"Playfair Display", Georgia, serif',
+} as const
+const fonts = Object.keys(fontStacks)
 
 const defaultTheme: ThemeState = {
   primary: 'green',
   neutral: 'slate',
   radius: 0.25,
-  font: 'Public Sans',
+  font: 'Inter',
 }
 
 const theme = ref<ThemeState>({ ...defaultTheme })
 let hasReadSavedTheme = false
+
+function normalizeTheme(value: Partial<ThemeState>): ThemeState {
+  return {
+    ...defaultTheme,
+    ...value,
+    font: value.font && value.font in fontStacks ? value.font : defaultTheme.font,
+  }
+}
 
 function readTheme() {
   if (hasReadSavedTheme || typeof window === 'undefined') {
@@ -50,32 +66,23 @@ function readTheme() {
 
   hasReadSavedTheme = true
 
+  if (!canStorePreferences()) {
+    return
+  }
+
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY)
 
     if (saved) {
-      theme.value = { ...defaultTheme, ...JSON.parse(saved) }
+      theme.value = normalizeTheme(JSON.parse(saved))
     }
   } catch {
     theme.value = { ...defaultTheme }
   }
 }
 
-function loadFont(font: string) {
-  if (typeof document === 'undefined') {
-    return
-  }
-
-  let link = document.getElementById('couple-dash-font') as HTMLLinkElement | null
-
-  if (!link) {
-    link = document.createElement('link')
-    link.id = 'couple-dash-font'
-    link.rel = 'stylesheet'
-    document.head.appendChild(link)
-  }
-
-  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700;800;900&display=swap`
+function getFontStack(font: string) {
+  return fontStacks[font as keyof typeof fontStacks] ?? fontStacks.Inter
 }
 
 export function useThemeSettings() {
@@ -87,13 +94,15 @@ export function useThemeSettings() {
 
     if (typeof document !== 'undefined') {
       document.documentElement.style.setProperty('--ui-radius', `${theme.value.radius}rem`)
-      document.documentElement.style.setProperty('--font-sans', `"${theme.value.font}"`)
+      document.documentElement.style.setProperty('--font-sans', getFontStack(theme.value.font))
     }
 
-    loadFont(theme.value.font)
-
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(theme.value))
+      if (canStorePreferences()) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(theme.value))
+      } else {
+        window.localStorage.removeItem(STORAGE_KEY)
+      }
     }
   }
 
@@ -125,7 +134,7 @@ export function useThemeSettings() {
   const font = computed({
     get: () => theme.value.font,
     set: (value: string) => {
-      theme.value.font = value
+      theme.value.font = value in fontStacks ? value : defaultTheme.font
     },
   })
 

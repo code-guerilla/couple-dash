@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AuthFormField, ButtonProps, FormSubmitEvent } from '@nuxt/ui'
 
 const props = defineProps<{
@@ -13,26 +14,27 @@ type MagicLinkPayload = {
 
 const { loading, error, signInWithGoogle, sendMagicLink } = useSupabaseAuth()
 const magicLinkSent = ref(false)
+const { t } = useI18n()
 
-const fields: AuthFormField[] = [
+const fields = computed<AuthFormField[]>(() => [
   {
     name: 'email',
     type: 'email',
-    label: 'Email',
-    placeholder: 'you@example.com',
+    label: t('auth.email'),
+    placeholder: t('auth.emailPlaceholder'),
     required: true,
   },
-]
+])
 
-const providers: ButtonProps[] = [
+const providers = computed<ButtonProps[]>(() => [
   {
-    label: 'Continue with Google',
+    label: t('auth.continueGoogle'),
     icon: 'i-simple-icons-google',
     color: 'neutral',
     variant: 'subtle',
     onClick: signInGoogle,
   },
-]
+])
 
 async function signInGoogle() {
   await signInWithGoogle(props.redirectTo)
@@ -46,13 +48,13 @@ async function submitMagicLink(event: FormSubmitEvent<MagicLinkPayload>) {
 
 <template>
   <UAuthForm
-    title="Sign in"
-    description="Use Google or an email magic link."
+    :title="t('auth.signIn')"
+    :description="t('auth.description')"
     icon="i-lucide-lock"
     :fields="fields"
     :providers="providers"
     :loading="loading"
-    :submit="{ label: 'Send magic link' }"
+    :submit="{ label: t('auth.sendMagicLink') }"
     class="w-full max-w-md"
     @submit="submitMagicLink"
   >
@@ -62,7 +64,7 @@ async function submitMagicLink(event: FormSubmitEvent<MagicLinkPayload>) {
         v-else-if="magicLinkSent"
         color="success"
         variant="soft"
-        description="Check your email for a secure sign-in link."
+        :description="t('auth.magicLinkSent')"
       />
     </template>
   </UAuthForm>

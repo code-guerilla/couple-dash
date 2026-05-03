@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
@@ -7,6 +8,7 @@ import { supabase } from '@/services/supabase'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const partnerSlug = computed(() => String(route.params.partnerSlug))
 const inviteToken = computed(() => String(route.query.token ?? ''))
@@ -22,7 +24,7 @@ async function acceptInvite() {
   acceptError.value = null
 
   if (!isSupabaseConfigured || !supabase) {
-    acceptError.value = 'Supabase is required for private partner invites.'
+    acceptError.value = t('invite.required')
     return
   }
 
@@ -31,7 +33,7 @@ async function acceptInvite() {
   }
 
   if (!inviteToken.value) {
-    acceptError.value = 'This invite link is missing its private token.'
+    acceptError.value = t('invite.missingToken')
     return
   }
 
@@ -66,9 +68,9 @@ onMounted(() => void acceptInvite())
     <UCard v-else>
       <template #header>
         <div>
-          <h1 class="text-xl font-black">Partner Invite</h1>
+          <h1 class="text-xl font-black">{{ t('invite.title') }}</h1>
           <p class="text-sm text-muted">
-            Accepting this invite links your Supabase account to this partner profile.
+            {{ t('invite.description') }}
           </p>
         </div>
       </template>
@@ -80,10 +82,15 @@ onMounted(() => void acceptInvite())
           v-else-if="accepted"
           color="success"
           variant="soft"
-          description="Invite accepted. Opening the private edit console."
+          :description="t('invite.accepted')"
         />
 
-        <UButton label="Accept invite" :loading="accepting" type="button" @click="acceptInvite" />
+        <UButton
+          :label="t('invite.accept')"
+          :loading="accepting"
+          type="button"
+          @click="acceptInvite"
+        />
       </div>
     </UCard>
   </section>

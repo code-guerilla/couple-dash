@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AuthPanel from '@/components/AuthPanel.vue'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import {
@@ -10,6 +11,7 @@ import {
 } from '@/services/supabase'
 
 const { initialized, isAuthenticated, isSupabaseConfigured, userEmail, signOut } = useSupabaseAuth()
+const { t } = useI18n()
 const checking = ref(false)
 const creating = ref(false)
 const loadingTenants = ref(false)
@@ -42,6 +44,9 @@ const form = reactive({
   partnerBName: '',
   partnerBSlug: '',
 })
+const themeOptions = computed(() =>
+  ['night', 'dawn', 'garden'].map((value) => ({ label: t(`admin.themes.${value}`), value })),
+)
 const editForm = reactive({
   coupleId: '',
   name: '',
@@ -67,7 +72,7 @@ const setupError = computed(() => {
     return null
   }
 
-  return 'The admin tenant SQL has not been applied or Supabase has not reloaded its API schema cache yet. Run supabase/schema.sql in the Supabase SQL editor, then refresh this page.'
+  return t('admin.setupError')
 })
 
 const createdLinks = computed(() => {
@@ -384,21 +389,19 @@ onMounted(() => void checkAdmin())
 
 <template>
   <section class="mx-auto max-w-5xl space-y-6 pb-10">
-    <AuthPanel
-      v-if="isSupabaseConfigured && initialized && !isAuthenticated"
-    />
+    <AuthPanel v-if="isSupabaseConfigured && initialized && !isAuthenticated" />
 
     <template v-else>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-black">Admin</h1>
-          <p class="text-sm text-muted">Create couple tenants, partner invites, and display tokens.</p>
+          <h1 class="text-3xl font-black">{{ t('admin.title') }}</h1>
+          <p class="text-sm text-muted">{{ t('admin.description') }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <UBadge v-if="userEmail" color="neutral" variant="soft">{{ userEmail }}</UBadge>
           <UButton
             icon="i-lucide-refresh-cw"
-            label="Check access"
+            :label="t('admin.checkAccess')"
             :loading="checking"
             size="sm"
             type="button"
@@ -406,7 +409,7 @@ onMounted(() => void checkAdmin())
           />
           <UButton
             icon="i-lucide-log-out"
-            label="Sign out"
+            :label="t('admin.signOut')"
             color="neutral"
             variant="ghost"
             size="sm"
@@ -427,113 +430,110 @@ onMounted(() => void checkAdmin())
         v-if="!isSupabaseConfigured"
         color="warning"
         variant="soft"
-        description="Supabase is not configured. Tenant management needs VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."
+        :description="t('admin.supabaseMissing')"
       />
 
       <UAlert
         v-else-if="initialized && isAuthenticated && !isAdmin"
         color="warning"
         variant="soft"
-        description="This account is not listed in app_admin."
+        :description="t('admin.notAdmin')"
       />
 
       <template v-else-if="isAdmin">
         <UCard>
           <template #header>
             <div class="flex items-center justify-between gap-3">
-              <h2 class="text-xl font-black">New Couple Tenant</h2>
-              <UBadge color="success" variant="soft">Admin session confirmed</UBadge>
+              <h2 class="text-xl font-black">{{ t('admin.newTenant') }}</h2>
+              <UBadge color="success" variant="soft">{{ t('admin.adminConfirmed') }}</UBadge>
             </div>
           </template>
 
           <form class="grid gap-4" @submit.prevent="createTenant">
             <div class="grid gap-3 sm:grid-cols-2">
-              <UFormField label="Couple name" required>
+              <UFormField :label="t('admin.coupleName')" required>
                 <UInput
                   :model-value="form.name"
                   class="w-full"
                   required
-                  placeholder="Anna + Paul"
+                  :placeholder="t('admin.coupleNamePlaceholder')"
                   @update:model-value="updateName"
                 />
               </UFormField>
-              <UFormField label="Tenant slug" required>
+              <UFormField :label="t('admin.tenantSlug')" required>
                 <UInput
                   :model-value="form.slug"
                   class="w-full"
                   required
-                  placeholder="anna-paul"
+                  :placeholder="t('admin.tenantSlugPlaceholder')"
                   @update:model-value="updateSlug"
                 />
               </UFormField>
             </div>
 
-            <UFormField label="Subtitle">
+            <UFormField :label="t('admin.subtitle')">
               <UInput
                 v-model="form.subtitle"
                 class="w-full"
-                placeholder="Private kitchen dashboard"
+                :placeholder="t('admin.subtitlePlaceholder')"
               />
             </UFormField>
 
             <div class="grid gap-3 sm:grid-cols-3">
-              <UFormField label="Relationship start" required>
+              <UFormField :label="t('admin.relationshipStart')" required>
                 <UInput v-model="form.relationshipStart" class="w-full" required type="date" />
               </UFormField>
-              <UFormField label="Wedding date" required>
+              <UFormField :label="t('admin.weddingDate')" required>
                 <UInput v-model="form.weddingDate" class="w-full" required type="date" />
               </UFormField>
-              <UFormField label="Anniversary date" required>
+              <UFormField :label="t('admin.anniversaryDate')" required>
                 <UInput v-model="form.anniversaryDate" class="w-full" required type="date" />
               </UFormField>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-2">
-              <UFormField label="Partner A name" required>
+              <UFormField :label="t('admin.partnerAName')" required>
                 <UInput
                   :model-value="form.partnerAName"
                   class="w-full"
                   required
-                  placeholder="Anna"
+                  :placeholder="t('admin.partnerANamePlaceholder')"
                   @update:model-value="updatePartnerAName"
                 />
               </UFormField>
-              <UFormField label="Partner A slug" required>
+              <UFormField :label="t('admin.partnerASlug')" required>
                 <UInput
                   :model-value="form.partnerASlug"
                   class="w-full"
                   required
-                  placeholder="anna"
+                  :placeholder="t('admin.partnerASlugPlaceholder')"
                   @update:model-value="updatePartnerASlug"
                 />
               </UFormField>
-              <UFormField label="Partner B name" required>
+              <UFormField :label="t('admin.partnerBName')" required>
                 <UInput
                   :model-value="form.partnerBName"
                   class="w-full"
                   required
-                  placeholder="Paul"
+                  :placeholder="t('admin.partnerBNamePlaceholder')"
                   @update:model-value="updatePartnerBName"
                 />
               </UFormField>
-              <UFormField label="Partner B slug" required>
+              <UFormField :label="t('admin.partnerBSlug')" required>
                 <UInput
                   :model-value="form.partnerBSlug"
                   class="w-full"
                   required
-                  placeholder="paul"
+                  :placeholder="t('admin.partnerBSlugPlaceholder')"
                   @update:model-value="updatePartnerBSlug"
                 />
               </UFormField>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <UFormField label="Theme">
-                <USelect v-model="form.theme" :items="['night', 'dawn', 'garden']" class="w-44" />
-              </UFormField>
+            <div class="flex flex-wrap items-center justify-end gap-3">
               <UButton
                 icon="i-lucide-plus"
-                label="Create tenant"
+                :label="t('admin.createTenant')"
                 :loading="creating"
                 type="submit"
               />
@@ -542,18 +542,20 @@ onMounted(() => void checkAdmin())
         </UCard>
 
         <UCard v-if="createdTenant && createdLinks">
-          <template #header><h2 class="text-xl font-black">Provisioning Links</h2></template>
+          <template #header
+            ><h2 class="text-xl font-black">{{ t('admin.provisioningLinks') }}</h2></template
+          >
 
           <div class="grid gap-3">
             <div class="rounded-md border border-default p-3">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p class="text-sm font-semibold">Display URL</p>
+                  <p class="text-sm font-semibold">{{ t('admin.displayUrl') }}</p>
                   <p class="break-all text-sm text-muted">{{ createdLinks.display }}</p>
                 </div>
                 <UButton
                   icon="i-lucide-copy"
-                  :label="copiedKey === 'display' ? 'Copied' : 'Copy'"
+                  :label="copiedKey === 'display' ? t('admin.copied') : t('admin.copy')"
                   size="sm"
                   variant="outline"
                   type="button"
@@ -561,10 +563,12 @@ onMounted(() => void checkAdmin())
                 />
               </div>
               <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p class="break-all text-sm">Token: {{ createdTenant.display_token }}</p>
+                <p class="break-all text-sm">
+                  {{ t('admin.token', { token: createdTenant.display_token }) }}
+                </p>
                 <UButton
                   icon="i-lucide-copy"
-                  :label="copiedKey === 'display-token' ? 'Copied' : 'Copy token'"
+                  :label="copiedKey === 'display-token' ? t('admin.copied') : t('admin.copyToken')"
                   size="sm"
                   variant="ghost"
                   type="button"
@@ -576,10 +580,10 @@ onMounted(() => void checkAdmin())
             <div class="grid gap-3 md:grid-cols-2">
               <div class="rounded-md border border-default p-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <p class="text-sm font-semibold">Partner A invite</p>
+                  <p class="text-sm font-semibold">{{ t('admin.partnerAInvite') }}</p>
                   <UButton
                     icon="i-lucide-copy"
-                    :label="copiedKey === 'partner-a' ? 'Copied' : 'Copy'"
+                    :label="copiedKey === 'partner-a' ? t('admin.copied') : t('admin.copy')"
                     size="sm"
                     variant="outline"
                     type="button"
@@ -590,10 +594,10 @@ onMounted(() => void checkAdmin())
               </div>
               <div class="rounded-md border border-default p-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <p class="text-sm font-semibold">Partner B invite</p>
+                  <p class="text-sm font-semibold">{{ t('admin.partnerBInvite') }}</p>
                   <UButton
                     icon="i-lucide-copy"
-                    :label="copiedKey === 'partner-b' ? 'Copied' : 'Copy'"
+                    :label="copiedKey === 'partner-b' ? t('admin.copied') : t('admin.copy')"
                     size="sm"
                     variant="outline"
                     type="button"
@@ -610,12 +614,14 @@ onMounted(() => void checkAdmin())
           <template #header>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 class="text-xl font-black">Manage {{ selectedTenant.name }}</h2>
-                <p class="text-sm text-muted">Original tokens cannot be recovered. Generate fresh links when needed.</p>
+                <h2 class="text-xl font-black">
+                  {{ t('admin.manageTenant', { name: selectedTenant.name }) }}
+                </h2>
+                <p class="text-sm text-muted">{{ t('admin.tokenWarning') }}</p>
               </div>
               <UButton
                 icon="i-lucide-key-round"
-                label="Regenerate links"
+                :label="t('admin.regenerateLinks')"
                 :loading="regenerating"
                 color="warning"
                 variant="soft"
@@ -627,57 +633,59 @@ onMounted(() => void checkAdmin())
 
           <form class="grid gap-4" @submit.prevent="saveTenant">
             <div class="grid gap-3 sm:grid-cols-2">
-              <UFormField label="Couple name" required>
+              <UFormField :label="t('admin.coupleName')" required>
                 <UInput v-model="editForm.name" class="w-full" required />
               </UFormField>
-              <UFormField label="Tenant slug" required>
+              <UFormField :label="t('admin.tenantSlug')" required>
                 <UInput v-model="editForm.slug" class="w-full" required />
               </UFormField>
             </div>
 
-            <UFormField label="Subtitle">
+            <UFormField :label="t('admin.subtitle')">
               <UInput v-model="editForm.subtitle" class="w-full" />
             </UFormField>
 
             <div class="grid gap-3 sm:grid-cols-3">
-              <UFormField label="Relationship start" required>
+              <UFormField :label="t('admin.relationshipStart')" required>
                 <UInput v-model="editForm.relationshipStart" class="w-full" required type="date" />
               </UFormField>
-              <UFormField label="Wedding date" required>
+              <UFormField :label="t('admin.weddingDate')" required>
                 <UInput v-model="editForm.weddingDate" class="w-full" required type="date" />
               </UFormField>
-              <UFormField label="Anniversary date" required>
+              <UFormField :label="t('admin.anniversaryDate')" required>
                 <UInput v-model="editForm.anniversaryDate" class="w-full" required type="date" />
               </UFormField>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-2">
-              <UFormField label="Partner A name" required>
+              <UFormField :label="t('admin.partnerAName')" required>
                 <UInput v-model="editForm.partnerAName" class="w-full" required />
               </UFormField>
-              <UFormField label="Partner A slug" required>
+              <UFormField :label="t('admin.partnerASlug')" required>
                 <UInput v-model="editForm.partnerASlug" class="w-full" required />
               </UFormField>
-              <UFormField label="Partner B name" required>
+              <UFormField :label="t('admin.partnerBName')" required>
                 <UInput v-model="editForm.partnerBName" class="w-full" required />
               </UFormField>
-              <UFormField label="Partner B slug" required>
+              <UFormField :label="t('admin.partnerBSlug')" required>
                 <UInput v-model="editForm.partnerBSlug" class="w-full" required />
               </UFormField>
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <UFormField label="Theme">
+              <UFormField :label="t('admin.theme')">
                 <USelect
                   v-model="editForm.theme"
-                  :items="['night', 'dawn', 'garden']"
+                  :items="themeOptions"
                   class="w-44"
+                  label-key="label"
+                  value-key="value"
                 />
               </UFormField>
               <div class="flex flex-wrap gap-2">
                 <UButton
                   icon="i-lucide-x"
-                  label="Close"
+                  :label="t('admin.close')"
                   color="neutral"
                   variant="ghost"
                   type="button"
@@ -685,7 +693,7 @@ onMounted(() => void checkAdmin())
                 />
                 <UButton
                   icon="i-lucide-save"
-                  label="Save changes"
+                  :label="t('admin.saveChanges')"
                   :loading="savingTenant"
                   type="submit"
                 />
@@ -696,17 +704,20 @@ onMounted(() => void checkAdmin())
           <div class="mt-6 rounded-md border border-error/30 p-4">
             <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
               <div>
-                <h3 class="font-bold text-error">Delete Tenant</h3>
+                <h3 class="font-bold text-error">{{ t('admin.deleteTenant') }}</h3>
                 <p class="mt-1 text-sm text-muted">
-                  This removes the couple, partners, widgets, alerts, display devices, and memberships.
+                  {{ t('admin.deleteDescription') }}
                 </p>
-                <UFormField class="mt-3" :label="`Type ${selectedTenant.slug} to confirm`">
+                <UFormField
+                  class="mt-3"
+                  :label="t('admin.typeToConfirm', { slug: selectedTenant.slug })"
+                >
                   <UInput v-model="deleteConfirmation" class="w-full" />
                 </UFormField>
               </div>
               <UButton
                 icon="i-lucide-trash-2"
-                label="Delete"
+                :label="t('admin.delete')"
                 color="error"
                 :disabled="!deleteMatchesSelectedSlug"
                 :loading="deletingTenant"
@@ -719,10 +730,10 @@ onMounted(() => void checkAdmin())
 
         <section class="space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-black">Tenants</h2>
+            <h2 class="text-xl font-black">{{ t('admin.tenants') }}</h2>
             <UButton
               icon="i-lucide-refresh-cw"
-              label="Refresh"
+              :label="t('admin.refresh')"
               :loading="loadingTenants"
               size="sm"
               variant="ghost"
@@ -738,35 +749,44 @@ onMounted(() => void checkAdmin())
                   <h3 class="text-lg font-black">{{ tenant.name }}</h3>
                   <UBadge color="neutral" variant="soft">{{ tenant.slug }}</UBadge>
                 </div>
-                <p class="mt-1 text-sm text-muted">{{ tenant.subtitle || 'No subtitle' }}</p>
+                <p class="mt-1 text-sm text-muted">
+                  {{ tenant.subtitle || t('admin.noSubtitle') }}
+                </p>
                 <div class="mt-3 flex flex-wrap gap-2 text-sm">
                   <UBadge color="info" variant="soft">
-                    {{ tenant.accepted_partner_count }}/{{ tenant.partner_count }} partners
+                    {{
+                      t('admin.partnerCount', {
+                        accepted: tenant.accepted_partner_count,
+                        total: tenant.partner_count,
+                      })
+                    }}
                   </UBadge>
-                  <UBadge color="success" variant="soft">{{ tenant.widget_count }} widgets</UBadge>
+                  <UBadge color="success" variant="soft">
+                    {{ t('admin.widgets', { count: tenant.widget_count }) }}
+                  </UBadge>
                   <UBadge color="warning" variant="soft">
-                    {{ tenant.active_alert_count }} active alerts
+                    {{ t('admin.activeAlerts', { count: tenant.active_alert_count }) }}
                   </UBadge>
                 </div>
               </div>
               <div class="flex flex-wrap gap-2 lg:justify-end">
                 <UButton
                   icon="i-lucide-monitor"
-                  label="Display"
+                  :label="t('admin.display')"
                   size="sm"
                   variant="outline"
                   :to="tenantDisplayUrl(tenant.slug)"
                 />
                 <UButton
                   icon="i-lucide-pencil"
-                  label="Edit"
+                  :label="t('admin.edit')"
                   size="sm"
                   variant="outline"
                   :to="tenantEditUrl(tenant.slug)"
                 />
                 <UButton
                   icon="i-lucide-settings"
-                  label="Manage"
+                  :label="t('admin.manage')"
                   :loading="loadingTenant && selectedTenant?.couple_id === tenant.couple_id"
                   size="sm"
                   type="button"
@@ -780,7 +800,7 @@ onMounted(() => void checkAdmin())
             v-if="!loadingTenants && tenants.length === 0"
             color="neutral"
             variant="soft"
-            description="No tenants have been created yet."
+            :description="t('admin.noTenants')"
           />
         </section>
       </template>

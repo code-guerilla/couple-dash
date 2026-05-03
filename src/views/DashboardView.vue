@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import MetricTile from '@/components/MetricTile.vue'
@@ -10,6 +11,7 @@ import { supabase } from '@/services/supabase'
 
 const route = useRoute()
 const router = useRouter()
+const { locale, t } = useI18n()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const displayToken = ref(String(route.query.token ?? ''))
 const claimError = ref<string | null>(null)
@@ -61,7 +63,7 @@ async function claimDisplay() {
   }
 
   if (!displayToken.value) {
-    claimError.value = 'Enter the private display token for this Raspberry Pi.'
+    claimError.value = t('dashboard.missingToken')
     return
   }
 
@@ -107,9 +109,11 @@ onMounted(async () => {
         <div class="w-full justify-start">
           <div class="max-w-4xl">
             <div class="mb-5 flex flex-wrap gap-2">
-              <UBadge color="success" variant="soft">Private display session</UBadge>
+              <UBadge color="success" variant="soft">{{ t('dashboard.privateSession') }}</UBadge>
               <UBadge color="neutral" variant="soft">
-                {{ isSupabaseConfigured ? 'RLS protected realtime' : 'Local demo' }}
+                {{
+                  isSupabaseConfigured ? t('dashboard.protectedRealtime') : t('dashboard.localDemo')
+                }}
               </UBadge>
             </div>
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
@@ -121,33 +125,37 @@ onMounted(async () => {
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="text-sm text-muted">Relationship Uptime</div>
+                <div class="text-sm text-muted">{{ t('dashboard.relationshipUptime') }}</div>
                 <div class="mt-1 text-4xl font-black leading-none text-green-500 sm:text-5xl">
                   {{ relationshipUptime }}
                 </div>
                 <div class="mt-1 text-sm text-muted">
-                  Since {{ new Date(couple.relationshipStart).toLocaleDateString() }}
+                  {{
+                    t('dashboard.since', {
+                      date: new Date(couple.relationshipStart).toLocaleDateString(locale),
+                    })
+                  }}
                 </div>
               </div>
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="text-sm text-muted">Days Until Wedding</div>
+                <div class="text-sm text-muted">{{ t('dashboard.daysUntilWedding') }}</div>
                 <div class="mt-1 text-4xl font-black leading-none text-primary-500 sm:text-5xl">
                   {{ daysUntilWedding }}
                 </div>
                 <div class="mt-1 text-sm text-muted">
-                  {{ new Date(couple.weddingDate).toLocaleDateString() }}
+                  {{ new Date(couple.weddingDate).toLocaleDateString(locale) }}
                 </div>
               </div>
               <div
                 class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
               >
-                <div class="text-sm text-muted">Commitment Level</div>
+                <div class="text-sm text-muted">{{ t('dashboard.commitmentLevel') }}</div>
                 <div class="mt-1 text-4xl font-black leading-none text-primary-400 sm:text-5xl">
                   100%
                 </div>
-                <div class="mt-1 text-sm text-muted">No rollback configured</div>
+                <div class="mt-1 text-sm text-muted">{{ t('dashboard.noRollback') }}</div>
               </div>
             </div>
           </div>
@@ -163,8 +171,10 @@ onMounted(async () => {
 
     <section class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-black">Core Couple Metrics</h2>
-        <UBadge color="info" variant="soft">{{ sharedWidgets.length }} visible</UBadge>
+        <h2 class="text-2xl font-black">{{ t('dashboard.coreMetrics') }}</h2>
+        <UBadge color="info" variant="soft">
+          {{ t('dashboard.visible', { count: sharedWidgets.length }) }}
+        </UBadge>
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricTile v-for="widget in sharedWidgets" :key="widget.id" :widget="widget" />
@@ -173,8 +183,10 @@ onMounted(async () => {
 
     <section class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-black">Person Metrics</h2>
-        <UBadge color="neutral" variant="soft">{{ personWidgets.length }} visible</UBadge>
+        <h2 class="text-2xl font-black">{{ t('dashboard.personMetrics') }}</h2>
+        <UBadge color="neutral" variant="soft">
+          {{ t('dashboard.visible', { count: personWidgets.length }) }}
+        </UBadge>
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricTile
@@ -190,7 +202,7 @@ onMounted(async () => {
       <QrCodeCard
         v-for="partner in couple.partners"
         :key="partner.id"
-        :label="`${partner.name} edit login`"
+        :label="t('dashboard.editLogin', { name: partner.name })"
         :person="partner.name"
         :url="`/edit/${couple.slug}`"
       />
@@ -201,7 +213,7 @@ onMounted(async () => {
         v-for="partner in couple.partners"
         :key="partner.id"
         class="pointer-events-auto"
-        :label="`${partner.name} edit login`"
+        :label="t('dashboard.editLogin', { name: partner.name })"
         :person="partner.name"
         :url="`/edit/${couple.slug}`"
       />
@@ -212,10 +224,9 @@ onMounted(async () => {
     <UCard>
       <form class="grid gap-4" @submit.prevent="claimDisplay">
         <div>
-          <h1 class="text-2xl font-black">Claim Display</h1>
+          <h1 class="text-2xl font-black">{{ t('dashboard.claimTitle') }}</h1>
           <p class="text-sm text-muted">
-            This screen needs an authenticated display session before it can read private dashboard
-            data.
+            {{ t('dashboard.claimDescription') }}
           </p>
         </div>
 
@@ -226,16 +237,16 @@ onMounted(async () => {
           :description="claimError ?? error ?? ''"
         />
 
-        <UFormField label="Private display token" required>
+        <UFormField :label="t('dashboard.tokenLabel')" required>
           <UInput
             v-model="displayToken"
             autocomplete="off"
             class="w-full"
-            placeholder="Private display token"
+            :placeholder="t('dashboard.tokenPlaceholder')"
             type="password"
           />
         </UFormField>
-        <UButton label="Claim Raspberry Pi display" :loading="claiming" type="submit" />
+        <UButton :label="t('dashboard.claimButton')" :loading="claiming" type="submit" />
       </form>
     </UCard>
   </section>

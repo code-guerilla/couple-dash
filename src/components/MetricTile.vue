@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DashboardWidget } from '@/types'
 
 const props = defineProps<{
   widget: DashboardWidget
   ownerName?: string
 }>()
+
+const { locale, t } = useI18n()
 
 const toneClasses: Record<DashboardWidget['tone'], string> = {
   info: 'text-info-500',
@@ -31,8 +34,8 @@ const meterValues = computed(() => [
     value: props.widget.numericValue ?? 40,
     color: 'var(--ui-primary)',
   },
-  { label: 'Shared', value: 35, color: 'var(--ui-bg-accented)' },
-  { label: 'Reserve', value: 25, color: 'var(--ui-primary)' },
+  { label: t('metric.shared'), value: 35, color: 'var(--ui-bg-accented)' },
+  { label: t('metric.reserve'), value: 25, color: 'var(--ui-primary)' },
 ])
 </script>
 
@@ -111,7 +114,11 @@ const meterValues = computed(() => [
       </template>
 
       <p class="text-xs text-dimmed opacity-75">
-        Updated {{ new Date(widget.updatedAt).toLocaleTimeString() }}
+        {{
+          t('metric.updated', {
+            time: new Date(widget.updatedAt).toLocaleTimeString(locale),
+          })
+        }}
       </p>
     </div>
   </UCard>

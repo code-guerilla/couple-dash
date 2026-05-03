@@ -1,0 +1,560 @@
+import { createI18n } from 'vue-i18n'
+import { canStorePreferences } from '@/composables/usePrivacyConsent'
+
+export type LocaleCode = 'en' | 'de'
+
+const storageKey = 'couple-dash-locale'
+
+export const messages = {
+  en: {
+    app: {
+      brand: 'CoupleDash',
+      brandPrefix: 'Couple',
+      brandSuffix: 'Dash',
+    },
+    nav: {
+      home: 'Home',
+      admin: 'Admin',
+      language: 'Language',
+    },
+    footer: {
+      copyright: '© 2026 Marcel Park - All rights reserved.',
+      impressum: 'Legal Notice',
+      privacy: 'Privacy Policy',
+    },
+    consent: {
+      title: 'Storage preferences',
+      description:
+        'This app can store your language, theme, and local demo dashboard settings on this device. No analytics or advertising cookies are used.',
+      accept: 'Save preferences',
+      reject: 'Use necessary storage only',
+    },
+    legal: {
+      impressumTitle: 'Legal Notice',
+      provider: 'Provider',
+      contact: 'Contact',
+      phone: 'Phone',
+      email: 'Email',
+      privacyTitle: 'Privacy Policy',
+      privacyIntro:
+        'This page describes which data is processed when using CoupleDash. It is a technical baseline for a privacy-friendly setup and should be reviewed legally before public launch.',
+      controllerTitle: 'Controller',
+      accessDataTitle: 'Access data',
+      accessDataText:
+        'When the site is hosted, the hosting provider may process technical access data such as IP address, time, requested URL, user agent, and status code to deliver and secure the site.',
+      authTitle: 'Authentication and dashboard data',
+      authText:
+        'If Supabase is configured, login, invite, tenant, dashboard, widget, and alert data is processed to provide the private dashboard features. Authentication storage is required for signed-in sessions.',
+      storageTitle: 'Cookies and local storage',
+      storageText:
+        'The app does not use analytics or advertising cookies. With your consent, it stores language, theme, and local demo dashboard preferences in localStorage. If you reject optional storage, these preferences are not persisted.',
+      thirdPartyTitle: 'Third-party services',
+      thirdPartyText:
+        'The app avoids external font loading. If Supabase is configured, Supabase acts as the backend service provider for authentication and database features.',
+      rightsTitle: 'Your rights',
+      rightsText:
+        'Under the GDPR you may request access, rectification, erasure, restriction of processing, data portability, and object to processing where legally applicable. You may also lodge a complaint with a competent supervisory authority.',
+      noLegalAdvice:
+        'This text is not legal advice. Have the final public version checked by a qualified lawyer or data protection professional.',
+    },
+    home: {
+      badge: 'Multi tenant couple dashboards',
+      title: 'A tiny always-on command center for wedding-grade household operations.',
+      description:
+        'Private couple dashboards are loaded only after a partner, display, or app admin session is authenticated.',
+      adminTitle: 'Admin',
+      adminDescription: 'Sign in and verify app_admin access.',
+      displayTitle: 'Display',
+      displayDescription: 'Open a private /display/:slug URL and claim it with the display token.',
+      partnerTitle: 'Partner',
+      partnerDescription: 'Partners use /invite links once, then /edit/:slug with Supabase Auth.',
+      production: 'Production',
+      wedding: 'Wedding',
+      partners: 'Partners',
+    },
+    dashboard: {
+      unavailable: 'No private dashboard is available for this authenticated session',
+      supabaseLoadFailed: 'Supabase load failed',
+      privateSession: 'Private display session',
+      protectedRealtime: 'RLS protected realtime',
+      localDemo: 'Local demo',
+      relationshipUptime: 'Relationship Uptime',
+      since: 'Since {date}',
+      daysUntilWedding: 'Days Until Wedding',
+      commitmentLevel: 'Commitment Level',
+      noRollback: 'No rollback configured',
+      coreMetrics: 'Core Couple Metrics',
+      personMetrics: 'Person Metrics',
+      visible: '{count} visible',
+      editLogin: '{name} edit login',
+      claimTitle: 'Claim Display',
+      claimDescription:
+        'This screen needs an authenticated display session before it can read private dashboard data.',
+      tokenLabel: 'Private display token',
+      tokenPlaceholder: 'Private display token',
+      claimButton: 'Claim Raspberry Pi display',
+      missingToken: 'Enter the private display token for this Raspberry Pi.',
+    },
+    alerts: {
+      title: 'Live Alerts',
+      active: '{count} active',
+      none: 'No active household incidents.',
+      systemGenerated: 'System generated',
+      triggeredBy: 'Triggered by {name}',
+      partnerFallback: 'partner',
+    },
+    metric: {
+      shared: 'Shared',
+      reserve: 'Reserve',
+      updated: 'Updated {time}',
+    },
+    qr: {
+      scanToEdit: 'Scan to edit live',
+    },
+    auth: {
+      email: 'Email',
+      emailPlaceholder: 'you@example.com',
+      continueGoogle: 'Continue with Google',
+      signIn: 'Sign in',
+      description: 'Use Google or an email magic link.',
+      sendMagicLink: 'Send magic link',
+      magicLinkSent: 'Check your email for a secure sign-in link.',
+    },
+    theme: {
+      settings: 'Theme settings',
+      primary: 'Primary',
+      neutral: 'Neutral',
+      radius: 'Radius',
+      font: 'Font',
+    },
+    edit: {
+      console: '{name} console',
+      partnerFallback: 'Partner',
+      display: 'Display',
+      editableMetrics: 'Editable Metrics',
+      editableMetricsDescription: 'Shared plus your own personal widgets',
+      activeAlerts: 'Active Alerts',
+      activeAlertsDescription: 'Visible on display',
+      addWidget: 'Add Widget',
+      metricKey: 'Metric key',
+      metricPlaceholder: 'Blanket Ownership',
+      value: 'Value',
+      valuePlaceholder: 'Disputed',
+      explanation: 'Dashboard explanation',
+      explanationPlaceholder: 'Small dashboard explanation',
+      scope: 'Scope',
+      shared: 'Shared',
+      onlyMine: 'Only mine',
+      visual: 'Visual',
+      visuals: {
+        stat: 'Stat',
+        progress: 'Progress',
+        radial: 'Radial',
+        doughnut: 'Doughnut',
+        bar: 'Bar',
+        line: 'Line',
+        memory: 'Memory',
+      },
+      tone: 'Tone',
+      tones: {
+        info: 'Info',
+        success: 'Success',
+        warning: 'Warning',
+        error: 'Error',
+      },
+      triggerAlert: 'Trigger Alert',
+      alertTemplates: {
+        snackShortage: 'Snack shortage detected',
+        anniversary: 'Anniversary approaching',
+        cuddle: 'Cuddle maintenance overdue',
+        dishwasher: 'Dishwasher loaded incorrectly',
+        nothing: 'One partner said "nothing" but meant "something"',
+        dinnerTimeout: 'Dinner decision timeout',
+        blanketDispute: 'Blanket ownership dispute',
+        remoteFailover: 'Remote control failover requested',
+      },
+      editLiveMetrics: 'Edit Live Metrics',
+      hide: 'Hide',
+      show: 'Show',
+      visible: 'visible',
+      hidden: 'hidden',
+      save: 'Save',
+      numericValue: 'Numeric value',
+      alerts: 'Alerts',
+      deactivate: 'Deactivate',
+      noDashboard: 'No private couple dashboard is available for this account.',
+      noPartner: 'Your account is not linked to a partner for this couple.',
+      freshDetail: 'Freshly added from the mobile console.',
+      raisedFrom: "Raised from {name}'s phone console.",
+    },
+    invite: {
+      required: 'Supabase is required for private partner invites.',
+      missingToken: 'This invite link is missing its private token.',
+      title: 'Partner Invite',
+      description: 'Accepting this invite links your Supabase account to this partner profile.',
+      accepted: 'Invite accepted. Opening the private edit console.',
+      accept: 'Accept invite',
+    },
+    admin: {
+      title: 'Admin',
+      description: 'Create couple tenants, partner invites, and display tokens.',
+      checkAccess: 'Check access',
+      signOut: 'Sign out',
+      setupError:
+        'The admin tenant SQL has not been applied or Supabase has not reloaded its API schema cache yet. Run supabase/schema.sql in the Supabase SQL editor, then refresh this page.',
+      supabaseMissing:
+        'Supabase is not configured. Tenant management needs VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.',
+      notAdmin: 'This account is not listed in app_admin.',
+      newTenant: 'New Couple Tenant',
+      adminConfirmed: 'Admin session confirmed',
+      coupleName: 'Couple name',
+      coupleNamePlaceholder: 'Anna + Paul',
+      tenantSlug: 'Tenant slug',
+      tenantSlugPlaceholder: 'anna-paul',
+      subtitle: 'Subtitle',
+      subtitlePlaceholder: 'Private kitchen dashboard',
+      relationshipStart: 'Relationship start',
+      weddingDate: 'Wedding date',
+      anniversaryDate: 'Anniversary date',
+      partnerAName: 'Partner A name',
+      partnerANamePlaceholder: 'Anna',
+      partnerASlug: 'Partner A slug',
+      partnerASlugPlaceholder: 'anna',
+      partnerBName: 'Partner B name',
+      partnerBNamePlaceholder: 'Paul',
+      partnerBSlug: 'Partner B slug',
+      partnerBSlugPlaceholder: 'paul',
+      theme: 'Theme',
+      themes: {
+        night: 'Night',
+        dawn: 'Dawn',
+        garden: 'Garden',
+      },
+      createTenant: 'Create tenant',
+      provisioningLinks: 'Provisioning Links',
+      displayUrl: 'Display URL',
+      token: 'Token: {token}',
+      copied: 'Copied',
+      copy: 'Copy',
+      copyToken: 'Copy token',
+      partnerAInvite: 'Partner A invite',
+      partnerBInvite: 'Partner B invite',
+      manageTenant: 'Manage {name}',
+      tokenWarning: 'Original tokens cannot be recovered. Generate fresh links when needed.',
+      regenerateLinks: 'Regenerate links',
+      close: 'Close',
+      saveChanges: 'Save changes',
+      deleteTenant: 'Delete Tenant',
+      deleteDescription:
+        'This removes the couple, partners, widgets, alerts, display devices, and memberships.',
+      typeToConfirm: 'Type {slug} to confirm',
+      delete: 'Delete',
+      tenants: 'Tenants',
+      refresh: 'Refresh',
+      noSubtitle: 'No subtitle',
+      partnerCount: '{accepted}/{total} partners',
+      widgets: '{count} widgets',
+      activeAlerts: '{count} active alerts',
+      display: 'Display',
+      edit: 'Edit',
+      manage: 'Manage',
+      noTenants: 'No tenants have been created yet.',
+    },
+  },
+  de: {
+    app: {
+      brand: 'CoupleDash',
+      brandPrefix: 'Couple',
+      brandSuffix: 'Dash',
+    },
+    nav: {
+      home: 'Start',
+      admin: 'Admin',
+      language: 'Sprache',
+    },
+    footer: {
+      copyright: '© 2026 Marcel Park - Alle Rechte vorbehalten.',
+      impressum: 'Impressum',
+      privacy: 'Datenschutz',
+    },
+    consent: {
+      title: 'Speichereinstellungen',
+      description:
+        'Diese App kann Sprache, Theme und lokale Demo-Dashboard-Einstellungen auf diesem Gerät speichern. Es werden keine Analyse- oder Werbe-Cookies verwendet.',
+      accept: 'Einstellungen speichern',
+      reject: 'Nur notwendige Speicherung',
+    },
+    legal: {
+      impressumTitle: 'Impressum',
+      provider: 'Anbieter',
+      contact: 'Kontakt',
+      phone: 'Telefon',
+      email: 'E-Mail',
+      privacyTitle: 'Datenschutzerklärung',
+      privacyIntro:
+        'Diese Seite beschreibt, welche Daten bei der Nutzung von CoupleDash verarbeitet werden. Sie ist eine technische Grundlage für einen datenschutzfreundlichen Betrieb und sollte vor einer öffentlichen Veröffentlichung rechtlich geprüft werden.',
+      controllerTitle: 'Verantwortlicher',
+      accessDataTitle: 'Zugriffsdaten',
+      accessDataText:
+        'Beim Hosting der Website kann der Hosting-Anbieter technische Zugriffsdaten wie IP-Adresse, Zeitpunkt, aufgerufene URL, User-Agent und Statuscode verarbeiten, um die Website auszuliefern und abzusichern.',
+      authTitle: 'Authentifizierung und Dashboard-Daten',
+      authText:
+        'Wenn Supabase konfiguriert ist, werden Login-, Einladungs-, Tenant-, Dashboard-, Widget- und Warnungsdaten verarbeitet, um die privaten Dashboard-Funktionen bereitzustellen. Authentifizierungs-Speicherung ist für angemeldete Sitzungen erforderlich.',
+      storageTitle: 'Cookies und lokale Speicherung',
+      storageText:
+        'Die App verwendet keine Analyse- oder Werbe-Cookies. Mit deiner Einwilligung speichert sie Sprache, Theme und lokale Demo-Dashboard-Einstellungen im localStorage. Wenn du optionale Speicherung ablehnst, werden diese Einstellungen nicht dauerhaft gespeichert.',
+      thirdPartyTitle: 'Drittanbieter',
+      thirdPartyText:
+        'Die App lädt keine externen Schriftarten. Wenn Supabase konfiguriert ist, dient Supabase als Backend-Dienstleister für Authentifizierung und Datenbankfunktionen.',
+      rightsTitle: 'Deine Rechte',
+      rightsText:
+        'Nach der DSGVO kannst du Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch verlangen, soweit dies gesetzlich anwendbar ist. Außerdem kannst du dich bei einer zuständigen Aufsichtsbehörde beschweren.',
+      noLegalAdvice:
+        'Dieser Text ist keine Rechtsberatung. Lass die finale öffentliche Version von einem qualifizierten Rechtsanwalt oder Datenschutzexperten prüfen.',
+    },
+    home: {
+      badge: 'Multi-Tenant-Dashboards für Paare',
+      title: 'Eine kleine, immer aktive Kommandozentrale für Haushaltsabläufe auf Hochzeitsniveau.',
+      description:
+        'Private Paar-Dashboards werden erst geladen, wenn eine Partner-, Display- oder Admin-Sitzung authentifiziert ist.',
+      adminTitle: 'Admin',
+      adminDescription: 'Anmelden und app_admin-Zugriff prüfen.',
+      displayTitle: 'Display',
+      displayDescription:
+        'Eine private /display/:slug-URL öffnen und mit dem Display-Token aktivieren.',
+      partnerTitle: 'Partner',
+      partnerDescription:
+        'Partner nutzen /invite-Links einmalig und danach /edit/:slug mit Supabase Auth.',
+      production: 'Produktion',
+      wedding: 'Hochzeit',
+      partners: 'Partner',
+    },
+    dashboard: {
+      unavailable: 'Für diese authentifizierte Sitzung ist kein privates Dashboard verfügbar',
+      supabaseLoadFailed: 'Supabase konnte nicht geladen werden',
+      privateSession: 'Private Display-Sitzung',
+      protectedRealtime: 'RLS-geschütztes Realtime',
+      localDemo: 'Lokale Demo',
+      relationshipUptime: 'Beziehungs-Uptime',
+      since: 'Seit {date}',
+      daysUntilWedding: 'Tage bis zur Hochzeit',
+      commitmentLevel: 'Commitment-Level',
+      noRollback: 'Kein Rollback konfiguriert',
+      coreMetrics: 'Zentrale Paar-Metriken',
+      personMetrics: 'Personen-Metriken',
+      visible: '{count} sichtbar',
+      editLogin: '{name} Edit-Login',
+      claimTitle: 'Display aktivieren',
+      claimDescription:
+        'Dieser Bildschirm braucht eine authentifizierte Display-Sitzung, bevor private Dashboard-Daten gelesen werden können.',
+      tokenLabel: 'Privater Display-Token',
+      tokenPlaceholder: 'Privater Display-Token',
+      claimButton: 'Raspberry-Pi-Display aktivieren',
+      missingToken: 'Gib den privaten Display-Token für diesen Raspberry Pi ein.',
+    },
+    alerts: {
+      title: 'Live-Warnungen',
+      active: '{count} aktiv',
+      none: 'Keine aktiven Haushaltsvorfälle.',
+      systemGenerated: 'Vom System erzeugt',
+      triggeredBy: 'Ausgelöst von {name}',
+      partnerFallback: 'Partner',
+    },
+    metric: {
+      shared: 'Gemeinsam',
+      reserve: 'Reserve',
+      updated: 'Aktualisiert {time}',
+    },
+    qr: {
+      scanToEdit: 'Scannen zum Live-Bearbeiten',
+    },
+    auth: {
+      email: 'E-Mail',
+      emailPlaceholder: 'du@example.com',
+      continueGoogle: 'Mit Google fortfahren',
+      signIn: 'Anmelden',
+      description: 'Google oder einen E-Mail-Magic-Link verwenden.',
+      sendMagicLink: 'Magic-Link senden',
+      magicLinkSent: 'Prüfe deine E-Mail für den sicheren Anmeldelink.',
+    },
+    theme: {
+      settings: 'Theme-Einstellungen',
+      primary: 'Primär',
+      neutral: 'Neutral',
+      radius: 'Radius',
+      font: 'Schrift',
+    },
+    edit: {
+      console: '{name}-Konsole',
+      partnerFallback: 'Partner',
+      display: 'Display',
+      editableMetrics: 'Bearbeitbare Metriken',
+      editableMetricsDescription: 'Gemeinsame plus deine eigenen persönlichen Widgets',
+      activeAlerts: 'Aktive Warnungen',
+      activeAlertsDescription: 'Auf dem Display sichtbar',
+      addWidget: 'Widget hinzufügen',
+      metricKey: 'Metrik-Schlüssel',
+      metricPlaceholder: 'Deckenbesitz',
+      value: 'Wert',
+      valuePlaceholder: 'Umstritten',
+      explanation: 'Dashboard-Erklärung',
+      explanationPlaceholder: 'Kurze Dashboard-Erklärung',
+      scope: 'Bereich',
+      shared: 'Gemeinsam',
+      onlyMine: 'Nur meine',
+      visual: 'Visualisierung',
+      visuals: {
+        stat: 'Kennzahl',
+        progress: 'Fortschritt',
+        radial: 'Radial',
+        doughnut: 'Ringdiagramm',
+        bar: 'Balken',
+        line: 'Linie',
+        memory: 'Erinnerung',
+      },
+      tone: 'Ton',
+      tones: {
+        info: 'Info',
+        success: 'Erfolg',
+        warning: 'Warnung',
+        error: 'Fehler',
+      },
+      triggerAlert: 'Warnung auslösen',
+      alertTemplates: {
+        snackShortage: 'Snackmangel erkannt',
+        anniversary: 'Jahrestag naht',
+        cuddle: 'Kuschelwartung überfällig',
+        dishwasher: 'Spülmaschine falsch eingeräumt',
+        nothing: 'Ein Partner sagte "nichts", meinte aber "etwas"',
+        dinnerTimeout: 'Timeout bei der Essensentscheidung',
+        blanketDispute: 'Deckenbesitz umstritten',
+        remoteFailover: 'Fernbedienungs-Failover angefordert',
+      },
+      editLiveMetrics: 'Live-Metriken bearbeiten',
+      hide: 'Ausblenden',
+      show: 'Anzeigen',
+      visible: 'sichtbar',
+      hidden: 'ausgeblendet',
+      save: 'Speichern',
+      numericValue: 'Numerischer Wert',
+      alerts: 'Warnungen',
+      deactivate: 'Deaktivieren',
+      noDashboard: 'Für dieses Konto ist kein privates Paar-Dashboard verfügbar.',
+      noPartner: 'Dein Konto ist für dieses Paar nicht mit einem Partner verknüpft.',
+      freshDetail: 'Neu aus der mobilen Konsole hinzugefügt.',
+      raisedFrom: 'Ausgelöst von {name}s Telefon-Konsole.',
+    },
+    invite: {
+      required: 'Supabase ist für private Partner-Einladungen erforderlich.',
+      missingToken: 'In diesem Einladungslink fehlt der private Token.',
+      title: 'Partner-Einladung',
+      description: 'Diese Einladung verknüpft dein Supabase-Konto mit diesem Partnerprofil.',
+      accepted: 'Einladung akzeptiert. Die private Bearbeitungskonsole wird geöffnet.',
+      accept: 'Einladung akzeptieren',
+    },
+    admin: {
+      title: 'Admin',
+      description: 'Paar-Tenants, Partner-Einladungen und Display-Token erstellen.',
+      checkAccess: 'Zugriff prüfen',
+      signOut: 'Abmelden',
+      setupError:
+        'Das Admin-Tenant-SQL wurde noch nicht angewendet oder Supabase hat den API-Schema-Cache noch nicht neu geladen. Führe supabase/schema.sql im Supabase SQL Editor aus und aktualisiere diese Seite.',
+      supabaseMissing:
+        'Supabase ist nicht konfiguriert. Tenant-Verwaltung braucht VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY.',
+      notAdmin: 'Dieses Konto ist nicht in app_admin eingetragen.',
+      newTenant: 'Neuer Paar-Tenant',
+      adminConfirmed: 'Admin-Sitzung bestätigt',
+      coupleName: 'Paarname',
+      coupleNamePlaceholder: 'Anna + Paul',
+      tenantSlug: 'Tenant-Slug',
+      tenantSlugPlaceholder: 'anna-paul',
+      subtitle: 'Untertitel',
+      subtitlePlaceholder: 'Privates Küchen-Dashboard',
+      relationshipStart: 'Beziehungsbeginn',
+      weddingDate: 'Hochzeitsdatum',
+      anniversaryDate: 'Jahrestag',
+      partnerAName: 'Name Partner A',
+      partnerANamePlaceholder: 'Anna',
+      partnerASlug: 'Slug Partner A',
+      partnerASlugPlaceholder: 'anna',
+      partnerBName: 'Name Partner B',
+      partnerBNamePlaceholder: 'Paul',
+      partnerBSlug: 'Slug Partner B',
+      partnerBSlugPlaceholder: 'paul',
+      theme: 'Theme',
+      themes: {
+        night: 'Nacht',
+        dawn: 'Morgen',
+        garden: 'Garten',
+      },
+      createTenant: 'Tenant erstellen',
+      provisioningLinks: 'Provisioning-Links',
+      displayUrl: 'Display-URL',
+      token: 'Token: {token}',
+      copied: 'Kopiert',
+      copy: 'Kopieren',
+      copyToken: 'Token kopieren',
+      partnerAInvite: 'Einladung Partner A',
+      partnerBInvite: 'Einladung Partner B',
+      manageTenant: '{name} verwalten',
+      tokenWarning:
+        'Original-Token können nicht wiederhergestellt werden. Erzeuge bei Bedarf neue Links.',
+      regenerateLinks: 'Links neu erzeugen',
+      close: 'Schließen',
+      saveChanges: 'Änderungen speichern',
+      deleteTenant: 'Tenant löschen',
+      deleteDescription:
+        'Dies entfernt das Paar, Partner, Widgets, Warnungen, Display-Geräte und Mitgliedschaften.',
+      typeToConfirm: '{slug} zur Bestätigung eingeben',
+      delete: 'Löschen',
+      tenants: 'Tenants',
+      refresh: 'Aktualisieren',
+      noSubtitle: 'Kein Untertitel',
+      partnerCount: '{accepted}/{total} Partner',
+      widgets: '{count} Widgets',
+      activeAlerts: '{count} aktive Warnungen',
+      display: 'Display',
+      edit: 'Bearbeiten',
+      manage: 'Verwalten',
+      noTenants: 'Es wurden noch keine Tenants erstellt.',
+    },
+  },
+} as const
+
+function initialLocale(): LocaleCode {
+  if (typeof window === 'undefined') {
+    return 'en'
+  }
+
+  const saved = canStorePreferences() ? window.localStorage.getItem(storageKey) : null
+  if (saved === 'en' || saved === 'de') {
+    return saved
+  }
+
+  return window.navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en'
+}
+
+export const i18n = createI18n({
+  legacy: false,
+  globalInjection: true,
+  locale: initialLocale(),
+  fallbackLocale: 'en',
+  messages,
+})
+
+export function persistLocale(locale: LocaleCode) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (canStorePreferences()) {
+    window.localStorage.setItem(storageKey, locale)
+  } else {
+    window.localStorage.removeItem(storageKey)
+  }
+  document.documentElement.lang = locale
+}
+
+export function currentLocaleCode(): LocaleCode {
+  return i18n.global.locale.value as LocaleCode
+}
