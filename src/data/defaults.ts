@@ -105,13 +105,6 @@ const defaultTimelineEntries = (
     'i-lucide-sparkles',
   ),
   timelineEntry(
-    'first-date',
-    relationshipStart,
-    'First Date',
-    'The first proper date worth remembering.',
-    'i-lucide-heart',
-  ),
-  timelineEntry(
     'official-couple',
     anniversaryDate,
     'Officially a Couple',
@@ -153,7 +146,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'couple-paul-anna',
     'timeline',
     'Our Timeline',
-    '7 milestones',
+    '6 milestones',
     'The relationship milestones that make the dashboard personal.',
     1,
     {
@@ -377,7 +370,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'couple-lina-tom',
     'timeline',
     'Our Timeline',
-    '7 milestones',
+    '6 milestones',
     'The relationship milestones that make the dashboard personal.',
     1,
     {

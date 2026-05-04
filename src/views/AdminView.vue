@@ -14,7 +14,7 @@ const adminError = ref<string | null>(null)
 const tenants = ref<AdminTenantRow[]>([])
 const text = {
   title: 'Admin',
-  description: 'Create couple tenants, partner invites, and display tokens.',
+  description: 'Create couple tenants, manage partner invites, and open account-based displays.',
   checkAccess: 'Check access',
   signOut: 'Sign out',
   setupError:
@@ -224,7 +224,9 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
                 :label="text.manage"
                 size="sm"
                 type="button"
-                @click="router.push({ name: 'admin-tenant', params: { tenantId: tenant.couple_id } })"
+                @click="
+                  router.push({ name: 'admin-tenant', params: { tenantId: tenant.couple_id } })
+                "
               />
             </div>
           </div>

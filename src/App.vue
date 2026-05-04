@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
-import { computed, watchEffect } from 'vue'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute } from 'vue-router'
 import { de, en } from '@nuxt/ui/locale'
 import AppFooter from '@/components/AppFooter.vue'
-import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
+import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
+import { supabase } from '@/services/supabase'
 import StorageConsentBanner from '@/components/StorageConsentBanner.vue'
 import ThemeController from '@/components/ThemeController.vue'
 
 const route = useRoute()
 const { locale, t } = useI18n()
+const { initialized, isAuthenticated } = useSupabaseAuth()
+const isAdmin = ref(false)
 
 const uiLocale = computed(() => (locale.value === 'de' ? de : en))
 
@@ -18,20 +21,40 @@ watchEffect(() => {
   document.title = t('app.brand')
 })
 
-const items = computed<NavigationMenuItem[]>(() => [
-  {
-    label: t('nav.home'),
-    icon: 'i-lucide-house',
-    to: '/',
-    active: route.name === 'home',
-  },
-  {
-    label: t('nav.admin'),
-    icon: 'i-lucide-shield',
-    to: '/admin',
-    active: route.path.startsWith('/admin'),
-  },
-])
+const items = computed<NavigationMenuItem[]>(() => {
+  const navItems: NavigationMenuItem[] = [
+    {
+      label: t('nav.home'),
+      icon: 'i-lucide-house',
+      to: '/',
+      active: route.name === 'home',
+    },
+  ]
+
+  if (isAdmin.value) {
+    navItems.push({
+      label: t('nav.admin'),
+      icon: 'i-lucide-shield',
+      to: '/admin',
+      active: route.path.startsWith('/admin'),
+    })
+  }
+
+  return navItems
+})
+
+async function checkAdmin() {
+  if (!supabase || !initialized.value || !isAuthenticated.value) {
+    isAdmin.value = false
+    return
+  }
+
+  const { data, error } = await supabase.rpc('is_app_admin')
+  isAdmin.value = error ? false : Boolean(data)
+}
+
+onMounted(() => void checkAdmin())
+watch([initialized, isAuthenticated], () => void checkAdmin())
 </script>
 
 <template>
@@ -45,7 +68,6 @@ const items = computed<NavigationMenuItem[]>(() => [
       <UNavigationMenu :items="items" />
 
       <template #right>
-        <LocaleSwitcher />
         <ThemeController />
         <UColorModeButton />
       </template>

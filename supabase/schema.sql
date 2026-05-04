@@ -1,10 +1,6 @@
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
-drop function if exists public.claim_display_device(text, text) cascade;
-drop function if exists public.is_display_device_for_couple(uuid) cascade;
-drop table if exists public.display_device cascade;
-
 create table if not exists public.app_admin (
   user_id uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
@@ -82,7 +78,6 @@ create table if not exists public.couple_alert (
 );
 
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
-alter table public.couple drop column if exists display_token_hash;
 alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
@@ -239,8 +234,6 @@ on public.dashboard_widget
 for each row
 execute function public.validate_dashboard_widget_person();
 
-drop function if exists public.accept_partner_invite(text, text, text);
-
 create or replace function public.accept_partner_invite(
   p_slug text,
   p_partner_slug text,
@@ -291,6 +284,113 @@ begin
 end;
 $$;
 
+create or replace function public.list_my_couples()
+returns table (
+  couple_id uuid,
+  slug text,
+  name text,
+  subtitle text,
+  relationship_start date,
+  wedding_date date,
+  anniversary_date date,
+  partner_count bigint,
+  accepted_partner_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    couple.id,
+    couple.slug,
+    couple.name,
+    couple.subtitle,
+    couple.relationship_start,
+    couple.wedding_date,
+    couple.anniversary_date,
+    count(distinct partner.id) as partner_count,
+    count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count
+  from public.couple_member member
+  join public.couple couple on couple.id = member.couple_id
+  left join public.partner partner on partner.couple_id = couple.id
+  where auth.uid() is not null
+    and member.user_id = auth.uid()
+  group by couple.id
+  order by couple.created_at desc;
+$$;
+
+create or replace function public.get_couple_invite_status(p_couple_id uuid)
+returns table (
+  partner_count bigint,
+  accepted_partner_count bigint,
+  pending_partner_id uuid,
+  pending_partner_name text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    count(partner.id) as partner_count,
+    count(partner.id) filter (where partner.user_id is not null) as accepted_partner_count,
+    (array_agg(partner.id order by partner.created_at) filter (where partner.user_id is null))[1] as pending_partner_id,
+    (array_agg(partner.name order by partner.created_at) filter (where partner.user_id is null))[1] as pending_partner_name
+  from public.partner partner
+  where partner.couple_id = p_couple_id
+    and public.is_couple_member(p_couple_id);
+$$;
+
+create or replace function public.create_pending_partner_invite(p_couple_id uuid)
+returns table (
+  couple_slug text,
+  partner_slug text,
+  partner_name text,
+  invite_token text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_partner public.partner%rowtype;
+  target_couple_slug text;
+  next_invite_token text := encode(extensions.gen_random_bytes(18), 'hex');
+begin
+  if not public.is_couple_member(p_couple_id) then
+    raise exception 'Not allowed';
+  end if;
+
+  select partner.*
+    into target_partner
+  from public.partner partner
+  where partner.couple_id = p_couple_id
+    and partner.user_id is null
+  order by partner.created_at
+  limit 1;
+
+  if target_partner.id is null then
+    raise exception 'No pending partner invite';
+  end if;
+
+  select couple.slug
+    into target_couple_slug
+  from public.couple couple
+  where couple.id = p_couple_id;
+
+  update public.partner
+    set invite_token_hash = extensions.crypt(next_invite_token, extensions.gen_salt('bf'))
+  where id = target_partner.id;
+
+  couple_slug := target_couple_slug;
+  partner_slug := target_partner.slug;
+  partner_name := target_partner.name;
+  invite_token := next_invite_token;
+  return next;
+end;
+$$;
+
 create or replace function public.admin_list_tenants()
 returns table (
   couple_id uuid,
@@ -332,9 +432,6 @@ as $$
   group by couple.id
   order by couple.created_at desc;
 $$;
-
-drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text, text);
-drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text);
 
 create or replace function public.admin_create_tenant(
   p_slug text,
@@ -447,7 +544,7 @@ begin
     (
       new_couple_id,
       'Our Timeline',
-      '7 milestones',
+      '6 milestones',
       'The relationship milestones that make the dashboard personal.',
       'shared',
       null,
@@ -458,7 +555,6 @@ begin
       'success',
       jsonb_build_array(
         jsonb_build_object('id', 'first-met', 'date', p_relationship_start, 'title', 'First Met', 'description', 'The first chapter of the story.', 'icon', 'i-lucide-sparkles'),
-        jsonb_build_object('id', 'first-date', 'date', p_relationship_start, 'title', 'First Date', 'description', 'The first proper date worth remembering.', 'icon', 'i-lucide-heart'),
         jsonb_build_object('id', 'official-couple', 'date', p_anniversary_date, 'title', 'Officially a Couple', 'description', 'The anniversary date that anchors the dashboard.', 'icon', 'i-lucide-badge-check'),
         jsonb_build_object('id', 'moved-together', 'date', p_anniversary_date, 'title', 'Moved Together', 'description', 'One place, two routines, shared keys.', 'icon', 'i-lucide-home'),
         jsonb_build_object('id', 'fur-baby', 'date', p_anniversary_date, 'title', 'Fur-Baby Date', 'description', 'The day the household got cuter.', 'icon', 'i-lucide-paw-print'),
@@ -475,7 +571,7 @@ begin
   values (
     new_couple_id,
     'Dashboard created',
-    'Invite both partners, then use the display URL with either partner account.',
+    'Invite both partners, then open the display with either linked partner account.',
     'success',
     'system'
   );
@@ -534,8 +630,6 @@ as $$
     and couple.id = p_couple_id
   group by couple.id;
 $$;
-
-drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, text, uuid, text, text, uuid, text, text);
 
 create or replace function public.admin_update_tenant(
   p_couple_id uuid,
@@ -607,8 +701,6 @@ begin
     and couple_id = p_couple_id;
 end;
 $$;
-
-drop function if exists public.admin_regenerate_tenant_credentials(uuid);
 
 create or replace function public.admin_regenerate_tenant_credentials(p_couple_id uuid)
 returns table (
@@ -700,7 +792,6 @@ begin
 end;
 $$;
 
-drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric);
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
   p_label text,
@@ -1073,6 +1164,9 @@ grant select, insert, update, delete on public.couple_alert to authenticated;
 grant execute on function public.is_app_admin() to authenticated;
 grant execute on function public.is_couple_member(uuid) to authenticated;
 grant execute on function public.accept_partner_invite(text, text, text) to authenticated;
+grant execute on function public.list_my_couples() to authenticated;
+grant execute on function public.get_couple_invite_status(uuid) to authenticated;
+grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
@@ -1083,11 +1177,6 @@ grant execute on function public.update_dashboard_widget(uuid, text, text, text,
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
 grant execute on function public.set_alert_active(uuid, boolean) to authenticated;
 grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text) to authenticated;
-
-drop function if exists public.partner_can_edit(text, uuid, uuid);
-drop function if exists public.update_dashboard_widget_with_token(text, uuid, text, text, text, text, text, text, numeric);
-drop function if exists public.add_dashboard_widget_with_token(text, uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text);
-drop function if exists public.trigger_couple_alert_with_token(text, uuid, text, text, text, text);
 
 do $$
 begin

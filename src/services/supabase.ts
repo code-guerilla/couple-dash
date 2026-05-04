@@ -47,6 +47,32 @@ export interface AdminTenantDetail {
   partners: AdminTenantPartner[]
 }
 
+export interface MyCoupleRow {
+  couple_id: string
+  slug: string
+  name: string
+  subtitle: string
+  relationship_start: string
+  wedding_date: string
+  anniversary_date: string
+  partner_count: number | string
+  accepted_partner_count: number | string
+}
+
+export interface CoupleInviteStatus {
+  partner_count: number | string
+  accepted_partner_count: number | string
+  pending_partner_id: string | null
+  pending_partner_name: string | null
+}
+
+export interface PendingPartnerInvite {
+  couple_slug: string
+  partner_slug: string
+  partner_name: string
+  invite_token: string
+}
+
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey)
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured

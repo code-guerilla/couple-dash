@@ -6,7 +6,7 @@ import AuthPanel from '@/components/AuthPanel.vue'
 import { alertTemplates } from '@/data/defaults'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
-import { supabase } from '@/services/supabase'
+import { supabase, type CoupleInviteStatus, type PendingPartnerInvite } from '@/services/supabase'
 import type { AlertSeverity, DashboardWidget, TimelineEntry, WidgetVisual } from '@/types'
 
 const route = useRoute()
@@ -28,9 +28,22 @@ const {
 
 const currentPartnerId = ref<string | null>(null)
 const membershipError = ref<string | null>(null)
+const inviteStatus = ref<CoupleInviteStatus | null>(null)
+const pendingInvite = ref<PendingPartnerInvite | null>(null)
+const inviteError = ref<string | null>(null)
+const generatingInvite = ref(false)
 const partner = computed(() =>
   couple.value?.partners.find((item) => item.id === currentPartnerId.value),
 )
+const pendingPartnerName = computed(() => inviteStatus.value?.pending_partner_name ?? null)
+const pendingInviteUrl = computed(() => {
+  if (!pendingInvite.value || typeof window === 'undefined') {
+    return ''
+  }
+
+  const origin = window.location.origin.replace(/\/$/, '')
+  return `${origin}/invite/${pendingInvite.value.couple_slug}/${pendingInvite.value.partner_slug}?token=${pendingInvite.value.invite_token}`
+})
 const editableWidgets = computed(() =>
   widgets.value.filter(
     (widget) => widget.scope === 'shared' || widget.personId === currentPartnerId.value,
@@ -101,10 +114,33 @@ async function loadMembership() {
   currentPartnerId.value = data?.partner_id ? String(data.partner_id) : null
 }
 
+async function loadInviteStatus() {
+  inviteStatus.value = null
+  inviteError.value = null
+
+  if (!isSupabaseConfigured || !supabase || !couple.value || !currentPartnerId.value) {
+    return
+  }
+
+  const { data, error: statusError } = await supabase
+    .rpc('get_couple_invite_status', {
+      p_couple_id: couple.value.id,
+    })
+    .single()
+
+  if (statusError) {
+    inviteError.value = statusError.message
+    return
+  }
+
+  inviteStatus.value = data as CoupleInviteStatus
+}
+
 async function loadPrivateEditor() {
   if (!isSupabaseConfigured || isAuthenticated.value) {
     await loadCouple()
     await loadMembership()
+    await loadInviteStatus()
   }
 }
 
@@ -164,6 +200,40 @@ async function sendAlert(title: string) {
   })
 }
 
+async function createPartnerInvite() {
+  if (!supabase || !couple.value) {
+    return
+  }
+
+  generatingInvite.value = true
+  inviteError.value = null
+  pendingInvite.value = null
+
+  const { data, error: createError } = await supabase
+    .rpc('create_pending_partner_invite', {
+      p_couple_id: couple.value.id,
+    })
+    .single()
+
+  generatingInvite.value = false
+
+  if (createError) {
+    inviteError.value = createError.message
+    return
+  }
+
+  pendingInvite.value = data as PendingPartnerInvite
+  await loadInviteStatus()
+}
+
+async function copyPendingInvite() {
+  if (!pendingInviteUrl.value) {
+    return
+  }
+
+  await navigator.clipboard.writeText(pendingInviteUrl.value)
+}
+
 watch(userId, () => void loadPrivateEditor())
 
 onMounted(() => void loadPrivateEditor())
@@ -197,6 +267,44 @@ onMounted(() => void loadPrivateEditor())
       variant="soft"
       :description="membershipError ?? error ?? ''"
     />
+
+    <UCard v-if="pendingPartnerName || pendingInviteUrl" variant="subtle">
+      <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div>
+          <h2 class="text-xl font-black">{{ t('edit.pendingInviteTitle') }}</h2>
+          <p class="text-sm text-muted">
+            {{ t('edit.pendingInviteDescription', { name: pendingPartnerName }) }}
+          </p>
+          <p v-if="pendingInviteUrl" class="mt-2 break-all text-sm text-muted">
+            {{ pendingInviteUrl }}
+          </p>
+          <UAlert
+            v-if="inviteError"
+            class="mt-3"
+            color="warning"
+            variant="soft"
+            :description="inviteError"
+          />
+        </div>
+        <div class="flex flex-wrap gap-2 md:justify-end">
+          <UButton
+            icon="i-lucide-link"
+            :label="t('edit.generateInvite')"
+            :loading="generatingInvite"
+            type="button"
+            @click="createPartnerInvite"
+          />
+          <UButton
+            v-if="pendingInviteUrl"
+            icon="i-lucide-copy"
+            :label="t('edit.copyInvite')"
+            variant="outline"
+            type="button"
+            @click="copyPendingInvite"
+          />
+        </div>
+      </div>
+    </UCard>
 
     <div class="grid gap-4 sm:grid-cols-2">
       <UCard variant="subtle">

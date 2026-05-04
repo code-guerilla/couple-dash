@@ -7,11 +7,26 @@ const props = defineProps<{
   widget: DashboardWidget
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+
+function dateOnlyTime(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+
+  if (!year || !month || !day) {
+    return null
+  }
+
+  return new Date(year, month - 1, day).setHours(0, 0, 0, 0)
+}
+
+const timelineEntries = computed(() =>
+  (props.widget.timelineEntries ?? [])
+    .filter((entry) => entry.id !== 'first-date')
+    .filter((entry) => entry.title || entry.date)
+)
 
 const items = computed(() =>
-  (props.widget.timelineEntries ?? [])
-    .filter((entry) => entry.title || entry.date)
+  timelineEntries.value
     .map((entry) => ({
       date: entry.date ? new Date(entry.date).toLocaleDateString(locale.value) : '',
       title: entry.title,
@@ -20,6 +35,27 @@ const items = computed(() =>
       value: entry.id,
     })),
 )
+
+const activeMilestone = computed(() => {
+  const today = new Date().setHours(0, 0, 0, 0)
+  let index = 0
+
+  timelineEntries.value.forEach((entry, entryIndex) => {
+    const date = dateOnlyTime(entry.date)
+
+    if (date !== null && date <= today) {
+      index = entryIndex
+    }
+  })
+
+  return index
+})
+
+const milestoneSummary = computed(() =>
+  t(items.value.length === 1 ? 'dashboard.milestone' : 'dashboard.milestones', {
+    count: items.value.length,
+  }),
+)
 </script>
 
 <template>
@@ -27,7 +63,7 @@ const items = computed(() =>
     <template #header>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase text-muted">{{ widget.value }}</p>
+          <p class="text-xs font-semibold uppercase text-muted">{{ milestoneSummary }}</p>
           <h2 class="text-2xl font-black">{{ widget.label }}</h2>
         </div>
         <UBadge :color="widget.tone" variant="soft">{{ items.length }}</UBadge>
@@ -36,7 +72,7 @@ const items = computed(() =>
 
     <UTimeline
       v-if="items.length"
-      :default-value="items.length - 1"
+      :default-value="activeMilestone"
       :items="items"
       class="w-full"
       color="primary"

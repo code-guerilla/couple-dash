@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 
 const { t } = useI18n()
 </script>
@@ -10,14 +11,17 @@ const { t } = useI18n()
       class="flex flex-col gap-3 py-5 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"
     >
       <p>{{ t('footer.copyright') }}</p>
-      <nav class="flex flex-wrap gap-x-4 gap-y-2">
-        <ULink to="/impressum" class="font-medium text-default hover:text-primary">
-          {{ t('footer.impressum') }}
-        </ULink>
-        <ULink to="/datenschutz" class="font-medium text-default hover:text-primary">
-          {{ t('footer.privacy') }}
-        </ULink>
-      </nav>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <LocaleSwitcher />
+        <nav class="flex flex-wrap gap-x-4 gap-y-2">
+          <ULink to="/impressum" class="font-medium text-default hover:text-primary">
+            {{ t('footer.impressum') }}
+          </ULink>
+          <ULink to="/datenschutz" class="font-medium text-default hover:text-primary">
+            {{ t('footer.privacy') }}
+          </ULink>
+        </nav>
+      </div>
     </UContainer>
   </footer>
 </template>
