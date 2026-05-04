@@ -86,28 +86,6 @@ export function useSupabaseAuth() {
     await supabase.auth.signOut()
   }
 
-  async function ensureAnonymousSession() {
-    if (!supabase) {
-      return
-    }
-
-    await refreshSession()
-
-    if (userId.value) {
-      return
-    }
-
-    loading.value = true
-    error.value = null
-    const { error: anonymousError } = await supabase.auth.signInAnonymously()
-    loading.value = false
-
-    if (anonymousError) {
-      error.value = anonymousError.message
-      throw anonymousError
-    }
-  }
-
   return {
     initialized: readonly(initialized),
     loading: readonly(loading),
@@ -120,6 +98,5 @@ export function useSupabaseAuth() {
     signInWithGoogle,
     sendMagicLink,
     signOut,
-    ensureAnonymousSession,
   }
 }

@@ -28,7 +28,6 @@ export interface Couple {
   relationshipStart: string
   weddingDate: string
   anniversaryDate: string
-  theme: string
   partners: Partner[]
 }
 

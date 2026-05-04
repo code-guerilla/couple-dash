@@ -42,10 +42,10 @@ const fontStacks = {
 const fonts = Object.keys(fontStacks)
 
 const defaultTheme: ThemeState = {
-  primary: 'green',
-  neutral: 'slate',
+  primary: 'purple',
+  neutral: 'zinc',
   radius: 0.25,
-  font: 'Inter',
+  font: 'Space Grotesk',
 }
 
 const theme = ref<ThemeState>({ ...defaultTheme })

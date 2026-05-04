@@ -1,23 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
+import AuthPanel from '@/components/AuthPanel.vue'
 import MetricTile from '@/components/MetricTile.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
-import { supabase } from '@/services/supabase'
 
 const route = useRoute()
-const router = useRouter()
 const { locale, t } = useI18n()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
-const displayToken = ref(String(route.query.token ?? ''))
-const claimError = ref<string | null>(null)
-const claiming = ref(false)
-const { ensureAnonymousSession, isSupabaseConfigured } = useSupabaseAuth()
+const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
 const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
   coupleSlug.value,
 )
@@ -58,56 +54,32 @@ function partnerName(personId?: string) {
   return couple.value?.partners.find((partner) => partner.id === personId)?.name
 }
 
-async function claimDisplay() {
-  claimError.value = null
-
-  if (!isSupabaseConfigured || !supabase) {
-    await loadCouple()
-    return
-  }
-
-  if (!displayToken.value) {
-    claimError.value = t('dashboard.missingToken')
-    return
-  }
-
-  claiming.value = true
-  await ensureAnonymousSession()
-  const { error: claimDisplayError } = await supabase.rpc('claim_display_device', {
-    p_slug: coupleSlug.value,
-    p_display_token: displayToken.value,
-  })
-  claiming.value = false
-
-  if (claimDisplayError) {
-    claimError.value = claimDisplayError.message
-    return
-  }
-
-  displayToken.value = ''
-  await router.replace({ name: 'display', params: { coupleSlug: coupleSlug.value } })
-  await loadCouple()
-}
-
-onMounted(async () => {
+async function loadDisplay() {
   if (!isSupabaseConfigured) {
     await loadCouple()
     return
   }
 
-  await ensureAnonymousSession()
-
-  if (displayToken.value) {
-    await claimDisplay()
+  if (!initialized.value || !isAuthenticated.value) {
     return
   }
 
   await loadCouple()
-})
+}
+
+onMounted(() => void loadDisplay())
+watch([initialized, isAuthenticated], () => void loadDisplay())
 </script>
 
 <template>
-  <section v-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
+  <section
+    v-if="isSupabaseConfigured && initialized && !isAuthenticated"
+    class="mx-auto max-w-md"
+  >
+    <AuthPanel />
+  </section>
+
+  <section v-else-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
     <div class="grid gap-4 xl:grid-cols-[1fr_21rem]">
       <UCard :ui="{ body: 'p-6 sm:p-10' }">
         <div class="w-full justify-start">
@@ -234,32 +206,17 @@ onMounted(async () => {
 
   <section v-else class="mx-auto max-w-xl space-y-4">
     <UCard>
-      <form class="grid gap-4" @submit.prevent="claimDisplay">
+      <div class="grid gap-4">
         <div>
           <h1 class="text-2xl font-black">{{ t('dashboard.claimTitle') }}</h1>
-          <p class="text-sm text-muted">
-            {{ t('dashboard.claimDescription') }}
-          </p>
+          <p class="text-sm text-muted">{{ t('dashboard.claimDescription') }}</p>
         </div>
-
         <UAlert
-          v-if="error || claimError"
           color="warning"
           variant="soft"
-          :description="claimError ?? error ?? ''"
+          :description="error ?? t('dashboard.unavailable')"
         />
-
-        <UFormField :label="t('dashboard.tokenLabel')" required>
-          <UInput
-            v-model="displayToken"
-            autocomplete="off"
-            class="w-full"
-            :placeholder="t('dashboard.tokenPlaceholder')"
-            type="password"
-          />
-        </UFormField>
-        <UButton :label="t('dashboard.claimButton')" :loading="claiming" type="submit" />
-      </form>
+      </div>
     </UCard>
   </section>
 </template>

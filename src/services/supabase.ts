@@ -11,7 +11,6 @@ export interface AdminTenantRow {
   relationship_start: string
   wedding_date: string
   anniversary_date: string
-  theme: string
   partner_count: number | string
   accepted_partner_count: number | string
   widget_count: number | string
@@ -22,7 +21,6 @@ export interface AdminTenantRow {
 export interface CreatedTenant {
   couple_id: string
   slug: string
-  display_token: string
   partner_a_slug: string
   partner_a_invite_token: string
   partner_b_slug: string
@@ -46,7 +44,6 @@ export interface AdminTenantDetail {
   relationship_start: string
   wedding_date: string
   anniversary_date: string
-  theme: string
   partners: AdminTenantPartner[]
 }
 

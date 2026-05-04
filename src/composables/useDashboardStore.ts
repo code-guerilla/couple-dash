@@ -136,7 +136,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
   const { data: couple, error: coupleError } = await supabase
     .from('couple')
     .select(
-      'id, slug, name, subtitle, relationship_start, wedding_date, anniversary_date, theme, created_at, partner(id, couple_id, slug, name, role, accent, created_at)',
+      'id, slug, name, subtitle, relationship_start, wedding_date, anniversary_date, created_at, partner(id, couple_id, slug, name, role, accent, created_at)',
     )
     .eq('slug', coupleSlug)
     .single()
@@ -177,7 +177,6 @@ async function loadSupabaseCouple(coupleSlug: string) {
         relationshipStart: String(couple.relationship_start),
         weddingDate: String(couple.wedding_date),
         anniversaryDate: String(couple.anniversary_date),
-        theme: String(couple.theme ?? 'night'),
         partners: (couple.partner ?? []).map((partner: Record<string, unknown>) => ({
           id: String(partner.id),
           slug: String(partner.slug),

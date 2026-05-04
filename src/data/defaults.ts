@@ -11,7 +11,6 @@ export const defaultCouples: Couple[] = [
     relationshipStart: '2018-04-04',
     weddingDate: '2026-08-22',
     anniversaryDate: '2027-08-22',
-    theme: 'night',
     partners: [
       {
         id: 'partner-paul',
@@ -37,7 +36,6 @@ export const defaultCouples: Couple[] = [
     relationshipStart: '2020-10-17',
     weddingDate: '2026-09-12',
     anniversaryDate: '2027-09-12',
-    theme: 'night',
     partners: [
       {
         id: 'partner-lina',

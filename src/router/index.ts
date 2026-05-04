@@ -33,6 +33,16 @@ const router = createRouter({
       component: () => import('../views/AdminView.vue'),
     },
     {
+      path: '/admin/new',
+      name: 'admin-new',
+      component: () => import('../views/AdminTenantNewView.vue'),
+    },
+    {
+      path: '/admin/tenants/:tenantId',
+      name: 'admin-tenant',
+      component: () => import('../views/AdminTenantManageView.vue'),
+    },
+    {
       path: '/impressum',
       name: 'impressum',
       component: () => import('../views/ImpressumView.vue'),

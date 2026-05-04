@@ -1,36 +1,9 @@
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
-do $$
-begin
-  if to_regclass('public.app_admins') is not null and to_regclass('public.app_admin') is null then
-    alter table public.app_admins rename to app_admin;
-  end if;
-
-  if to_regclass('public.couples') is not null and to_regclass('public.couple') is null then
-    alter table public.couples rename to couple;
-  end if;
-
-  if to_regclass('public.partners') is not null and to_regclass('public.partner') is null then
-    alter table public.partners rename to partner;
-  end if;
-
-  if to_regclass('public.couple_members') is not null and to_regclass('public.couple_member') is null then
-    alter table public.couple_members rename to couple_member;
-  end if;
-
-  if to_regclass('public.display_devices') is not null and to_regclass('public.display_device') is null then
-    alter table public.display_devices rename to display_device;
-  end if;
-
-  if to_regclass('public.dashboard_widgets') is not null and to_regclass('public.dashboard_widget') is null then
-    alter table public.dashboard_widgets rename to dashboard_widget;
-  end if;
-
-  if to_regclass('public.couple_alerts') is not null and to_regclass('public.couple_alert') is null then
-    alter table public.couple_alerts rename to couple_alert;
-  end if;
-end $$;
+drop function if exists public.claim_display_device(text, text) cascade;
+drop function if exists public.is_display_device_for_couple(uuid) cascade;
+drop table if exists public.display_device cascade;
 
 create table if not exists public.app_admin (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -45,8 +18,6 @@ create table if not exists public.couple (
   relationship_start date not null,
   wedding_date date not null,
   anniversary_date date not null,
-  theme text not null default 'night',
-  display_token_hash text not null,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
@@ -71,16 +42,6 @@ create table if not exists public.couple_member (
   partner_id uuid references public.partner(id) on delete cascade,
   role text not null check (role in ('partner', 'admin')),
   primary key (couple_id, user_id)
-);
-
-create table if not exists public.display_device (
-  id uuid primary key default extensions.gen_random_uuid(),
-  couple_id uuid not null references public.couple(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  label text not null default 'Kitchen display',
-  revoked_at timestamptz,
-  created_at timestamptz not null default now(),
-  unique (couple_id, user_id)
 );
 
 create table if not exists public.dashboard_widget (
@@ -120,21 +81,13 @@ create table if not exists public.couple_alert (
   created_at timestamptz not null default now()
 );
 
-alter table public.couple add column if not exists theme text not null default 'night';
-alter table public.couple add column if not exists display_token_hash text;
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
-update public.couple
-  set display_token_hash = extensions.crypt(extensions.gen_random_uuid()::text, extensions.gen_salt('bf'))
-where display_token_hash is null;
-alter table public.couple alter column display_token_hash set not null;
+alter table public.couple drop column if exists display_token_hash;
 alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.partner add column if not exists invite_token_hash text;
-alter table public.partner drop column if exists edit_token;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
 alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
-update public.dashboard_widget set visual = 'stat' where visual = 'status';
-update public.dashboard_widget set visual = 'progress' where visual = 'latency';
-update public.dashboard_widget set visual = 'bar' where visual = 'allocation';
+alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
 
 do $$
 begin
@@ -164,7 +117,6 @@ begin
   end if;
 end $$;
 
-alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
 alter table public.dashboard_widget
   add constraint dashboard_widget_visual_check
   check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory', 'timeline'));
@@ -192,8 +144,6 @@ create index if not exists partner_couple_id_idx on public.partner (couple_id);
 create index if not exists partner_user_id_idx on public.partner (user_id);
 create index if not exists couple_member_user_id_idx on public.couple_member (user_id);
 create index if not exists couple_member_couple_id_idx on public.couple_member (couple_id);
-create index if not exists display_device_user_id_idx on public.display_device (user_id);
-create index if not exists display_device_couple_id_idx on public.display_device (couple_id);
 create index if not exists dashboard_widget_couple_sort_idx on public.dashboard_widget (couple_id, sort_order);
 create index if not exists dashboard_widget_person_id_idx on public.dashboard_widget (person_id);
 create index if not exists couple_alert_couple_active_created_idx
@@ -205,14 +155,14 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as '
   select auth.uid() is not null
     and exists (
       select 1
       from public.app_admin admin
       where admin.user_id = auth.uid()
     );
-$$;
+';
 
 create or replace function public.is_couple_member(p_couple_id uuid)
 returns boolean
@@ -220,7 +170,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as '
   select public.is_app_admin()
     or (
       auth.uid() is not null
@@ -231,24 +181,7 @@ as $$
           and member.user_id = auth.uid()
       )
     );
-$$;
-
-create or replace function public.is_display_device_for_couple(p_couple_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select auth.uid() is not null
-    and exists (
-      select 1
-      from public.display_device device
-      where device.couple_id = p_couple_id
-        and device.user_id = auth.uid()
-        and device.revoked_at is null
-    );
-$$;
+';
 
 create or replace function public.is_current_partner_for_widget(p_couple_id uuid, p_person_id uuid)
 returns boolean
@@ -256,7 +189,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as '
   select auth.uid() is not null
     and exists (
       select 1
@@ -265,7 +198,7 @@ as $$
         and member.user_id = auth.uid()
         and member.partner_id = p_person_id
     );
-$$;
+';
 
 create or replace function public.validate_dashboard_widget_person()
 returns trigger
@@ -306,44 +239,13 @@ on public.dashboard_widget
 for each row
 execute function public.validate_dashboard_widget_person();
 
-create or replace function public.claim_display_device(p_slug text, p_display_token text)
-returns uuid
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  target_couple public.couple%rowtype;
-begin
-  if auth.uid() is null then
-    raise exception 'Authentication required';
-  end if;
-
-  select *
-    into target_couple
-  from public.couple couple
-  where couple.slug = p_slug;
-
-  if target_couple.id is null
-    or target_couple.display_token_hash is null
-    or extensions.crypt(p_display_token, target_couple.display_token_hash) <> target_couple.display_token_hash then
-    raise exception 'Invalid display token';
-  end if;
-
-  insert into public.display_device (couple_id, user_id, revoked_at)
-  values (target_couple.id, auth.uid(), null)
-  on conflict (couple_id, user_id) do update
-    set revoked_at = null;
-
-  return target_couple.id;
-end;
-$$;
+drop function if exists public.accept_partner_invite(text, text, text);
 
 create or replace function public.accept_partner_invite(
   p_slug text,
   p_partner_slug text,
   p_invite_token text
-) returns table (partner_id uuid, couple_id uuid)
+) returns table (accepted_partner_id uuid, accepted_couple_id uuid)
 language plpgsql
 security definer
 set search_path = ''
@@ -383,8 +285,8 @@ begin
     set partner_id = excluded.partner_id,
         role = 'partner';
 
-  partner_id := target_partner.id;
-  couple_id := target_partner.couple_id;
+  accepted_partner_id := target_partner.id;
+  accepted_couple_id := target_partner.couple_id;
   return next;
 end;
 $$;
@@ -398,7 +300,6 @@ returns table (
   relationship_start date,
   wedding_date date,
   anniversary_date date,
-  theme text,
   partner_count bigint,
   accepted_partner_count bigint,
   widget_count bigint,
@@ -418,7 +319,6 @@ as $$
     couple.relationship_start,
     couple.wedding_date,
     couple.anniversary_date,
-    couple.theme,
     count(distinct partner.id) as partner_count,
     count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count,
     count(distinct widget.id) as widget_count,
@@ -433,6 +333,9 @@ as $$
   order by couple.created_at desc;
 $$;
 
+drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text, text);
+drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text);
+
 create or replace function public.admin_create_tenant(
   p_slug text,
   p_name text,
@@ -440,7 +343,6 @@ create or replace function public.admin_create_tenant(
   p_relationship_start date,
   p_wedding_date date,
   p_anniversary_date date,
-  p_theme text,
   p_partner_a_name text,
   p_partner_a_slug text,
   p_partner_b_name text,
@@ -448,7 +350,6 @@ create or replace function public.admin_create_tenant(
 ) returns table (
   couple_id uuid,
   slug text,
-  display_token text,
   partner_a_slug text,
   partner_a_invite_token text,
   partner_b_slug text,
@@ -463,7 +364,6 @@ declare
   normalized_slug text := lower(regexp_replace(trim(p_slug), '[^a-zA-Z0-9]+', '-', 'g'));
   normalized_partner_a_slug text := lower(regexp_replace(trim(p_partner_a_slug), '[^a-zA-Z0-9]+', '-', 'g'));
   normalized_partner_b_slug text := lower(regexp_replace(trim(p_partner_b_slug), '[^a-zA-Z0-9]+', '-', 'g'));
-  next_display_token text := encode(extensions.gen_random_bytes(18), 'hex');
   next_partner_a_token text := encode(extensions.gen_random_bytes(18), 'hex');
   next_partner_b_token text := encode(extensions.gen_random_bytes(18), 'hex');
   partner_a_id uuid;
@@ -496,8 +396,6 @@ begin
     relationship_start,
     wedding_date,
     anniversary_date,
-    theme,
-    display_token_hash,
     created_by
   ) values (
     normalized_slug,
@@ -506,8 +404,6 @@ begin
     p_relationship_start,
     p_wedding_date,
     p_anniversary_date,
-    coalesce(nullif(trim(p_theme), ''), 'night'),
-    extensions.crypt(next_display_token, extensions.gen_salt('bf')),
     auth.uid()
   )
   returning id into new_couple_id;
@@ -579,14 +475,13 @@ begin
   values (
     new_couple_id,
     'Dashboard created',
-    'Invite both partners and claim the private display session.',
+    'Invite both partners, then use the display URL with either partner account.',
     'success',
     'system'
   );
 
   couple_id := new_couple_id;
   slug := normalized_slug;
-  display_token := next_display_token;
   partner_a_slug := normalized_partner_a_slug;
   partner_a_invite_token := next_partner_a_token;
   partner_b_slug := normalized_partner_b_slug;
@@ -604,7 +499,6 @@ returns table (
   relationship_start date,
   wedding_date date,
   anniversary_date date,
-  theme text,
   partners jsonb
 )
 language sql
@@ -620,7 +514,6 @@ as $$
     couple.relationship_start,
     couple.wedding_date,
     couple.anniversary_date,
-    couple.theme,
     coalesce(
       jsonb_agg(
         jsonb_build_object(
@@ -642,6 +535,8 @@ as $$
   group by couple.id;
 $$;
 
+drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, text, uuid, text, text, uuid, text, text);
+
 create or replace function public.admin_update_tenant(
   p_couple_id uuid,
   p_slug text,
@@ -650,7 +545,6 @@ create or replace function public.admin_update_tenant(
   p_relationship_start date,
   p_wedding_date date,
   p_anniversary_date date,
-  p_theme text,
   p_partner_a_id uuid,
   p_partner_a_name text,
   p_partner_a_slug text,
@@ -693,8 +587,7 @@ begin
         subtitle = coalesce(trim(p_subtitle), ''),
         relationship_start = p_relationship_start,
         wedding_date = p_wedding_date,
-        anniversary_date = p_anniversary_date,
-        theme = coalesce(nullif(trim(p_theme), ''), 'night')
+        anniversary_date = p_anniversary_date
   where id = p_couple_id;
 
   if not found then
@@ -715,11 +608,12 @@ begin
 end;
 $$;
 
+drop function if exists public.admin_regenerate_tenant_credentials(uuid);
+
 create or replace function public.admin_regenerate_tenant_credentials(p_couple_id uuid)
 returns table (
   couple_id uuid,
   slug text,
-  display_token text,
   partner_a_slug text,
   partner_a_invite_token text,
   partner_b_slug text,
@@ -733,7 +627,6 @@ declare
   target_couple public.couple%rowtype;
   first_partner public.partner%rowtype;
   second_partner public.partner%rowtype;
-  next_display_token text := encode(extensions.gen_random_bytes(18), 'hex');
   next_partner_a_token text := encode(extensions.gen_random_bytes(18), 'hex');
   next_partner_b_token text := encode(extensions.gen_random_bytes(18), 'hex');
 begin
@@ -769,10 +662,6 @@ begin
     raise exception 'Tenant needs two partners before credentials can be generated';
   end if;
 
-  update public.couple
-    set display_token_hash = extensions.crypt(next_display_token, extensions.gen_salt('bf'))
-  where id = p_couple_id;
-
   update public.partner
     set invite_token_hash = extensions.crypt(next_partner_a_token, extensions.gen_salt('bf'))
   where id = first_partner.id;
@@ -783,7 +672,6 @@ begin
 
   couple_id := target_couple.id;
   slug := target_couple.slug;
-  display_token := next_display_token;
   partner_a_slug := first_partner.slug;
   partner_a_invite_token := next_partner_a_token;
   partner_b_slug := second_partner.slug;
@@ -1041,64 +929,28 @@ alter table public.app_admin enable row level security;
 alter table public.couple enable row level security;
 alter table public.partner enable row level security;
 alter table public.couple_member enable row level security;
-alter table public.display_device enable row level security;
 alter table public.dashboard_widget enable row level security;
 alter table public.couple_alert enable row level security;
-
-do $$
-begin
-  if to_regclass('public.couple') is not null then
-    execute 'drop policy if exists "Public read couple" on public.couple';
-    execute 'drop policy if exists "Public read couples" on public.couple';
-    execute 'drop policy if exists "Couple visible to member admin and display" on public.couple';
-    execute 'drop policy if exists "Couples are visible to members admins and displays" on public.couple';
-    execute 'drop policy if exists "couple are visible to members admins and displays" on public.couple';
-    execute 'drop policy if exists "App admin manage couple" on public.couple';
-    execute 'drop policy if exists "App admins manage couple" on public.couple';
-    execute 'drop policy if exists "App admins manage couples" on public.couple';
-  end if;
-
-  if to_regclass('public.partner') is not null then
-    execute 'drop policy if exists "Public read partner without token" on public.partner';
-    execute 'drop policy if exists "Public read partners without token" on public.partner';
-    execute 'drop policy if exists "Partner visible to member admin and display" on public.partner';
-    execute 'drop policy if exists "Partners are visible to members admins and displays" on public.partner';
-    execute 'drop policy if exists "partner are visible to members admins and displays" on public.partner';
-    execute 'drop policy if exists "App admin manage partner" on public.partner';
-    execute 'drop policy if exists "App admins manage partner" on public.partner';
-    execute 'drop policy if exists "App admins manage partners" on public.partner';
-  end if;
-
-  if to_regclass('public.dashboard_widget') is not null then
-    execute 'drop policy if exists "Public read widgets" on public.dashboard_widget';
-    execute 'drop policy if exists "Widgets are visible to members and displays" on public.dashboard_widget';
-    execute 'drop policy if exists "Members insert shared widgets" on public.dashboard_widget';
-    execute 'drop policy if exists "Members insert own person widgets" on public.dashboard_widget';
-    execute 'drop policy if exists "Members update shared widgets" on public.dashboard_widget';
-    execute 'drop policy if exists "Members update own person widgets" on public.dashboard_widget';
-    execute 'drop policy if exists "App admins manage widgets" on public.dashboard_widget';
-  end if;
-
-  if to_regclass('public.couple_alert') is not null then
-    execute 'drop policy if exists "Public read alerts" on public.couple_alert';
-    execute 'drop policy if exists "Alerts are visible to members and displays" on public.couple_alert';
-    execute 'drop policy if exists "Members create partner alerts" on public.couple_alert';
-    execute 'drop policy if exists "App admins manage alerts" on public.couple_alert';
-  end if;
-end $$;
 
 drop policy if exists "App admins view app admins" on public.app_admin;
 drop policy if exists "App admin view app_admin" on public.app_admin;
 drop policy if exists "App admins manage app admins" on public.app_admin;
 drop policy if exists "App admin manage app_admin" on public.app_admin;
+drop policy if exists "Couple visible to member and admin" on public.couple;
+drop policy if exists "App admin manage couple" on public.couple;
+drop policy if exists "Partner visible to member and admin" on public.partner;
+drop policy if exists "App admin manage partner" on public.partner;
 drop policy if exists "Members view couple memberships" on public.couple_member;
 drop policy if exists "Couple member visible to member" on public.couple_member;
 drop policy if exists "App admins manage couple memberships" on public.couple_member;
 drop policy if exists "App admin manage couple_member" on public.couple_member;
-drop policy if exists "Members and displays view display devices" on public.display_device;
-drop policy if exists "Display device visible to member and device" on public.display_device;
-drop policy if exists "App admins manage display devices" on public.display_device;
-drop policy if exists "App admin manage display_device" on public.display_device;
+drop policy if exists "Widgets are visible to members" on public.dashboard_widget;
+drop policy if exists "Members update shared widgets" on public.dashboard_widget;
+drop policy if exists "Members update own person widgets" on public.dashboard_widget;
+drop policy if exists "App admins manage widgets" on public.dashboard_widget;
+drop policy if exists "Alerts are visible to members" on public.couple_alert;
+drop policy if exists "Members create partner alerts" on public.couple_alert;
+drop policy if exists "App admins manage alerts" on public.couple_alert;
 
 create policy "App admin view app_admin"
 on public.app_admin for select
@@ -1111,10 +963,10 @@ to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
 
-create policy "Couple visible to member admin and display"
+create policy "Couple visible to member and admin"
 on public.couple for select
 to authenticated
-using (public.is_couple_member(id) or public.is_display_device_for_couple(id));
+using (public.is_couple_member(id));
 
 create policy "App admin manage couple"
 on public.couple for all
@@ -1122,10 +974,10 @@ to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
 
-create policy "Partner visible to member admin and display"
+create policy "Partner visible to member and admin"
 on public.partner for select
 to authenticated
-using (public.is_couple_member(couple_id) or public.is_display_device_for_couple(couple_id));
+using (public.is_couple_member(couple_id));
 
 create policy "App admin manage partner"
 on public.partner for all
@@ -1144,24 +996,10 @@ to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
 
-create policy "Display device visible to member and device"
-on public.display_device for select
-to authenticated
-using (public.is_couple_member(couple_id) or (user_id = auth.uid() and revoked_at is null));
-
-create policy "App admin manage display_device"
-on public.display_device for all
-to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
-
-create policy "Widgets are visible to members and displays"
+create policy "Widgets are visible to members"
 on public.dashboard_widget for select
 to authenticated
-using (
-  public.is_couple_member(couple_id)
-  or (visible = true and public.is_display_device_for_couple(couple_id))
-);
+using (public.is_couple_member(couple_id));
 
 create policy "Members update shared widgets"
 on public.dashboard_widget for update
@@ -1197,13 +1035,10 @@ to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
 
-create policy "Alerts are visible to members and displays"
+create policy "Alerts are visible to members"
 on public.couple_alert for select
 to authenticated
-using (
-  public.is_couple_member(couple_id)
-  or (active = true and public.is_display_device_for_couple(couple_id))
-);
+using (public.is_couple_member(couple_id));
 
 create policy "Members create partner alerts"
 on public.couple_alert for insert
@@ -1225,26 +1060,23 @@ grant usage on schema public to authenticated;
 
 grant select (user_id, created_at) on public.app_admin to authenticated;
 grant insert, update, delete on public.app_admin to authenticated;
-grant select (id, slug, name, subtitle, relationship_start, wedding_date, anniversary_date, theme, created_at)
+grant select (id, slug, name, subtitle, relationship_start, wedding_date, anniversary_date, created_at)
   on public.couple to authenticated;
 grant insert, update, delete on public.couple to authenticated;
 grant select (id, couple_id, slug, name, role, accent, created_at)
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
-grant select, insert, update, delete on public.display_device to authenticated;
 grant select, update, delete on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function public.is_app_admin() to authenticated;
 grant execute on function public.is_couple_member(uuid) to authenticated;
-grant execute on function public.is_display_device_for_couple(uuid) to authenticated;
-grant execute on function public.claim_display_device(text, text) to authenticated;
 grant execute on function public.accept_partner_invite(text, text, text) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
-grant execute on function public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text, text) to authenticated;
+grant execute on function public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
-grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, text, uuid, text, text, uuid, text, text) to authenticated;
+grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text) to authenticated;
 grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
 grant execute on function public.admin_delete_tenant(uuid) to authenticated;
 grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb) to authenticated;
