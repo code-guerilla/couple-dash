@@ -1,6 +1,14 @@
 export type WidgetScope = 'shared' | 'person'
 
-export type WidgetVisual = 'stat' | 'progress' | 'radial' | 'doughnut' | 'bar' | 'line' | 'memory'
+export type WidgetVisual =
+  | 'stat'
+  | 'progress'
+  | 'radial'
+  | 'doughnut'
+  | 'bar'
+  | 'line'
+  | 'memory'
+  | 'timeline'
 
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 
@@ -24,6 +32,14 @@ export interface Couple {
   partners: Partner[]
 }
 
+export interface TimelineEntry {
+  id: string
+  date: string
+  title: string
+  description: string
+  icon: string
+}
+
 export interface DashboardWidget {
   id: string
   coupleId: string
@@ -40,6 +56,7 @@ export interface DashboardWidget {
   numericValue?: number
   tone: AlertSeverity
   visible: boolean
+  timelineEntries?: TimelineEntry[]
   updatedAt: string
 }
 

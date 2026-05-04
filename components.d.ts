@@ -17,6 +17,7 @@ declare module 'vue' {
     LocaleSwitcher: typeof import('./src/components/LocaleSwitcher.vue')['default']
     MetricTile: typeof import('./src/components/MetricTile.vue')['default']
     QrCodeCard: typeof import('./src/components/QrCodeCard.vue')['default']
+    RelationshipTimelineWidget: typeof import('./src/components/RelationshipTimelineWidget.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     StorageConsentBanner: typeof import('./src/components/StorageConsentBanner.vue')['default']
@@ -42,6 +43,7 @@ declare module 'vue' {
     USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USkeleton: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Skeleton.vue')['default']
     UTextarea: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Textarea.vue')['default']
+    UTimeline: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Timeline.vue')['default']
     UTooltip: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tooltip.vue')['default']
   }
 }

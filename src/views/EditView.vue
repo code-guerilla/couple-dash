@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
@@ -7,7 +7,7 @@ import { alertTemplates } from '@/data/defaults'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { supabase } from '@/services/supabase'
-import type { AlertSeverity, DashboardWidget, WidgetScope, WidgetVisual } from '@/types'
+import type { AlertSeverity, DashboardWidget, TimelineEntry, WidgetVisual } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,7 +21,6 @@ const {
   error,
   loadCouple,
   updateWidget,
-  addWidget,
   setWidgetVisible,
   triggerAlert,
   setAlertActive,
@@ -37,15 +36,13 @@ const editableWidgets = computed(() =>
     (widget) => widget.scope === 'shared' || widget.personId === currentPartnerId.value,
   ),
 )
-
-const newWidget = reactive({
-  label: '',
-  value: '',
-  detail: '',
-  scope: 'shared' as WidgetScope,
-  visual: 'stat' as WidgetVisual,
-  tone: 'info' as AlertSeverity,
-})
+const editableMetricWidgets = computed(() =>
+  editableWidgets.value.filter((widget) => widget.visual !== 'timeline'),
+)
+const editableTimelineWidgets = computed(() =>
+  editableWidgets.value.filter((widget) => widget.visual === 'timeline'),
+)
+const today = new Date().toISOString().slice(0, 10)
 
 const visualOptionValues: WidgetVisual[] = [
   'stat',
@@ -122,38 +119,34 @@ async function saveWidget(widget: DashboardWidget) {
   })
 }
 
-async function createWidget() {
-  if (!couple.value || !newWidget.label || !newWidget.value) {
-    return
-  }
+function addTimelineEntry(widget: DashboardWidget) {
+  widget.timelineEntries = [
+    ...(widget.timelineEntries ?? []),
+    {
+      id: crypto.randomUUID(),
+      date: today,
+      title: t('edit.newMilestone'),
+      description: '',
+      icon: 'i-lucide-heart',
+    },
+  ]
+}
 
-  if (newWidget.scope === 'person' && !currentPartnerId.value) {
-    membershipError.value = t('edit.noPartner')
-    return
-  }
+function removeTimelineEntry(widget: DashboardWidget, entryId: string) {
+  widget.timelineEntries = (widget.timelineEntries ?? []).filter((entry) => entry.id !== entryId)
+}
 
-  await addWidget({
-    coupleId: couple.value.id,
-    label: newWidget.label,
-    value: newWidget.value,
-    detail: newWidget.detail || t('edit.freshDetail'),
-    scope: newWidget.scope,
-    personId: newWidget.scope === 'person' ? (currentPartnerId.value ?? undefined) : undefined,
-    visual: newWidget.visual,
-    tone: newWidget.tone,
-    numericValue: ['progress', 'radial', 'doughnut', 'line'].includes(newWidget.visual)
-      ? 50
-      : undefined,
-    max: 100,
-    visible: true,
+async function saveTimelineWidget(widget: DashboardWidget) {
+  await updateWidget(widget.id, {
+    label: widget.label,
+    value: widget.value,
+    detail: widget.detail,
+    tone: widget.tone,
+    timelineEntries: (widget.timelineEntries ?? []).map((entry: TimelineEntry) => ({
+      ...entry,
+      icon: entry.icon || 'i-lucide-heart',
+    })),
   })
-
-  newWidget.label = ''
-  newWidget.value = ''
-  newWidget.detail = ''
-  newWidget.scope = 'shared'
-  newWidget.visual = 'stat'
-  newWidget.tone = 'info'
 }
 
 async function sendAlert(title: string) {
@@ -222,72 +215,6 @@ onMounted(() => void loadPrivateEditor())
       </UCard>
     </div>
 
-    <UCard>
-      <template #header
-        ><h2 class="text-xl font-black">{{ t('edit.addWidget') }}</h2></template
-      >
-
-      <form class="grid gap-4" @submit.prevent="createWidget">
-        <UFormField :label="t('edit.metricKey')" required>
-          <UInput
-            v-model="newWidget.label"
-            class="w-full"
-            :placeholder="t('edit.metricPlaceholder')"
-          />
-        </UFormField>
-        <UFormField :label="t('edit.value')" required>
-          <UInput
-            v-model="newWidget.value"
-            class="w-full"
-            :placeholder="t('edit.valuePlaceholder')"
-          />
-        </UFormField>
-        <UFormField :label="t('edit.explanation')">
-          <UTextarea
-            v-model="newWidget.detail"
-            autoresize
-            class="w-full"
-            :placeholder="t('edit.explanationPlaceholder')"
-          />
-        </UFormField>
-
-        <div class="grid gap-3 sm:grid-cols-3">
-          <UFormField :label="t('edit.scope')">
-            <USelect
-              v-model="newWidget.scope"
-              class="w-full"
-              label-key="label"
-              value-key="value"
-              :items="[
-                { label: t('edit.shared'), value: 'shared' },
-                { label: t('edit.onlyMine'), value: 'person', disabled: !currentPartnerId },
-              ]"
-            />
-          </UFormField>
-          <UFormField :label="t('edit.visual')">
-            <USelect
-              v-model="newWidget.visual"
-              class="w-full"
-              label-key="label"
-              value-key="value"
-              :items="visualOptions"
-            />
-          </UFormField>
-          <UFormField :label="t('edit.tone')">
-            <USelect
-              v-model="newWidget.tone"
-              class="w-full"
-              label-key="label"
-              value-key="value"
-              :items="toneOptions"
-            />
-          </UFormField>
-        </div>
-
-        <UButton :label="t('edit.addWidget')" type="submit" />
-      </form>
-    </UCard>
-
     <section class="space-y-3">
       <h2 class="text-xl font-black">{{ t('edit.triggerAlert') }}</h2>
       <div class="grid gap-2 sm:grid-cols-2">
@@ -303,9 +230,85 @@ onMounted(() => void loadPrivateEditor())
       </div>
     </section>
 
+    <section v-if="editableTimelineWidgets.length" class="space-y-3">
+      <h2 class="text-xl font-black">{{ t('edit.relationshipTimeline') }}</h2>
+      <UCard v-for="widget in editableTimelineWidgets" :key="widget.id">
+        <form class="grid gap-4" @submit.prevent="saveTimelineWidget(widget)">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <UBadge color="success" variant="soft">{{ t('edit.staticWidget') }}</UBadge>
+              <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
+                {{ widget.visible ? t('edit.visible') : t('edit.hidden') }}
+              </UBadge>
+            </div>
+            <div class="flex gap-2">
+              <UButton
+                :label="widget.visible ? t('edit.hide') : t('edit.show')"
+                variant="outline"
+                size="sm"
+                type="button"
+                @click="setWidgetVisible(widget.id, !widget.visible)"
+              />
+              <UButton
+                :label="t('edit.addMilestone')"
+                variant="outline"
+                size="sm"
+                type="button"
+                @click="addTimelineEntry(widget)"
+              />
+              <UButton :label="t('edit.save')" size="sm" type="submit" />
+            </div>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <UFormField :label="t('edit.timelineTitle')">
+              <UInput v-model="widget.label" class="w-full font-semibold" />
+            </UFormField>
+            <UFormField :label="t('edit.timelineSummary')">
+              <UInput v-model="widget.value" class="w-full" />
+            </UFormField>
+          </div>
+
+          <div class="grid gap-3">
+            <div
+              v-for="entry in widget.timelineEntries"
+              :key="entry.id"
+              class="grid gap-3 rounded-md border border-default p-3"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <UBadge color="neutral" variant="soft">{{ entry.title }}</UBadge>
+                <UButton
+                  :label="t('edit.delete')"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  @click="removeTimelineEntry(widget, entry.id)"
+                />
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <UFormField :label="t('edit.milestoneTitle')">
+                  <UInput v-model="entry.title" class="w-full" />
+                </UFormField>
+                <UFormField :label="t('edit.milestoneDate')">
+                  <UInput v-model="entry.date" class="w-full" type="date" />
+                </UFormField>
+              </div>
+              <UFormField :label="t('edit.milestoneDescription')">
+                <UTextarea v-model="entry.description" autoresize class="w-full" />
+              </UFormField>
+              <UFormField :label="t('edit.icon')">
+                <UInput v-model="entry.icon" class="w-full" placeholder="i-lucide-heart" />
+              </UFormField>
+            </div>
+          </div>
+        </form>
+      </UCard>
+    </section>
+
     <section class="space-y-3">
       <h2 class="text-xl font-black">{{ t('edit.editLiveMetrics') }}</h2>
-      <UCard v-for="widget in editableWidgets" :key="widget.id">
+      <UCard v-for="widget in editableMetricWidgets" :key="widget.id">
         <form class="grid gap-4" @submit.prevent="saveWidget(widget)">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">

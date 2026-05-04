@@ -1,4 +1,4 @@
-import type { Couple, CoupleAlert, DashboardState, DashboardWidget } from '@/types'
+import type { Couple, CoupleAlert, DashboardState, DashboardWidget, TimelineEntry } from '@/types'
 
 const now = new Date().toISOString()
 
@@ -80,14 +80,97 @@ const widget = (
   ...options,
 })
 
+const timelineEntry = (
+  id: string,
+  date: string,
+  title: string,
+  description: string,
+  icon: string,
+): TimelineEntry => ({
+  id,
+  date,
+  title,
+  description,
+  icon,
+})
+
+const defaultTimelineEntries = (
+  relationshipStart: string,
+  weddingDate: string,
+  anniversaryDate: string,
+): TimelineEntry[] => [
+  timelineEntry(
+    'first-met',
+    relationshipStart,
+    'First Met',
+    'The first chapter of the story.',
+    'i-lucide-sparkles',
+  ),
+  timelineEntry(
+    'first-date',
+    relationshipStart,
+    'First Date',
+    'The first proper date worth remembering.',
+    'i-lucide-heart',
+  ),
+  timelineEntry(
+    'official-couple',
+    anniversaryDate,
+    'Officially a Couple',
+    'The anniversary date that anchors the dashboard.',
+    'i-lucide-badge-check',
+  ),
+  timelineEntry(
+    'moved-together',
+    anniversaryDate,
+    'Moved Together',
+    'One place, two routines, shared keys.',
+    'i-lucide-home',
+  ),
+  timelineEntry(
+    'fur-baby',
+    anniversaryDate,
+    'Fur-Baby Date',
+    'The day the household got cuter.',
+    'i-lucide-paw-print',
+  ),
+  timelineEntry(
+    'engagement',
+    anniversaryDate,
+    'The Engagement',
+    'A yes worth keeping visible.',
+    'i-lucide-gem',
+  ),
+  timelineEntry(
+    'wedding',
+    weddingDate,
+    'The Wedding',
+    'The big day on the shared calendar.',
+    'i-lucide-church',
+  ),
+]
+
 export const defaultWidgets: DashboardWidget[] = [
+  widget(
+    'couple-paul-anna',
+    'timeline',
+    'Our Timeline',
+    '7 milestones',
+    'The relationship milestones that make the dashboard personal.',
+    1,
+    {
+      visual: 'timeline',
+      tone: 'success',
+      timelineEntries: defaultTimelineEntries('2018-04-04', '2026-08-22', '2018-08-22'),
+    },
+  ),
   widget(
     'couple-paul-anna',
     'uptime',
     'Relationship Uptime',
     '8y 22d',
     'No known outages since launch.',
-    1,
+    2,
     {
       tone: 'success',
       visual: 'stat',
@@ -99,7 +182,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Days Until 2nd Anniversary',
     '200',
     'Romance calendar is warming up.',
-    2,
+    3,
     {
       unit: 'days',
       visual: 'radial',
@@ -114,7 +197,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Commitment Level',
     '100',
     'Permanent contract signed emotionally.',
-    3,
+    4,
     {
       unit: '%',
       visual: 'progress',
@@ -129,7 +212,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Love SLA',
     '99.999',
     'Measured over all couch deployments.',
-    4,
+    5,
     {
       unit: '%',
       visual: 'progress',
@@ -144,7 +227,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Shared Memories Indexed',
     '186',
     'Photos, trips, tiny jokes, and excellent meals.',
-    5,
+    6,
     {
       visual: 'stat',
       tone: 'info',
@@ -156,7 +239,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Current Couple Status',
     'Production Stable',
     'All core services operational.',
-    6,
+    7,
     {
       visual: 'stat',
       tone: 'success',
@@ -168,7 +251,7 @@ export const defaultWidgets: DashboardWidget[] = [
     "Paul's Hungry Level",
     'Starving',
     'Snack cache should be replenished.',
-    7,
+    8,
     {
       scope: 'person',
       personId: 'partner-paul',
@@ -176,7 +259,7 @@ export const defaultWidgets: DashboardWidget[] = [
       tone: 'warning',
     },
   ),
-  widget('couple-paul-anna', 'anna-mood', "Anna's Mood", 'Cozy', 'Blanket mode active.', 8, {
+  widget('couple-paul-anna', 'anna-mood', "Anna's Mood", 'Cozy', 'Blanket mode active.', 9, {
     scope: 'person',
     personId: 'partner-anna',
     visual: 'stat',
@@ -188,7 +271,7 @@ export const defaultWidgets: DashboardWidget[] = [
     "Paul's Battery Level",
     '12',
     'Immediate charging via food and silence advised.',
-    9,
+    10,
     {
       scope: 'person',
       personId: 'partner-paul',
@@ -205,7 +288,7 @@ export const defaultWidgets: DashboardWidget[] = [
     "Anna's Coffee Requirement",
     'Critical',
     'Coffee queue priority elevated.',
-    10,
+    11,
     {
       scope: 'person',
       personId: 'partner-anna',
@@ -219,7 +302,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Time to Forgive After Fight',
     '14m',
     'Drops to 4m when dessert is involved.',
-    11,
+    12,
     {
       visual: 'progress',
       numericValue: 14,
@@ -233,7 +316,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Dinner Decision Latency',
     '47m',
     'Decision quorum remains complicated.',
-    12,
+    13,
     {
       visual: 'progress',
       numericValue: 47,
@@ -247,7 +330,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Daily Hug Quota',
     '8 / 12',
     'Four hugs remain before midnight.',
-    13,
+    14,
     {
       visual: 'progress',
       numericValue: 66,
@@ -261,7 +344,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Cuddle Bandwidth',
     'High',
     'Streaming available in 4K comfort.',
-    14,
+    15,
     {
       visual: 'stat',
       tone: 'success',
@@ -273,7 +356,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Weekend Allocation',
     '40% sofa / 35% friends / 25% naps',
     'Balanced but nap capacity can scale.',
-    15,
+    16,
     {
       visual: 'bar',
       numericValue: 40,
@@ -286,10 +369,23 @@ export const defaultWidgets: DashboardWidget[] = [
     'Latest Shared Memory',
     'Tried a new ramen place and rated broth like engineers.',
     'Indexed 2 hours ago.',
-    16,
+    17,
     {
       visual: 'memory',
       tone: 'success',
+    },
+  ),
+  widget(
+    'couple-lina-tom',
+    'timeline',
+    'Our Timeline',
+    '7 milestones',
+    'The relationship milestones that make the dashboard personal.',
+    1,
+    {
+      visual: 'timeline',
+      tone: 'success',
+      timelineEntries: defaultTimelineEntries('2020-10-17', '2026-09-12', '2020-11-14'),
     },
   ),
   widget(
@@ -298,7 +394,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Relationship Uptime',
     '5y 191d',
     'Healthy and passing checks.',
-    1,
+    2,
     {
       tone: 'success',
       visual: 'stat',
@@ -310,7 +406,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Commitment Level',
     '100',
     'No rollback plan detected.',
-    2,
+    3,
     {
       unit: '%',
       visual: 'progress',
@@ -325,7 +421,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Coffee Requirement',
     'Elevated',
     'One more cappuccino likely needed.',
-    3,
+    4,
     {
       visual: 'stat',
       tone: 'warning',
@@ -337,7 +433,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Latest Shared Memory',
     'Bought wedding shoes, celebrated with fries.',
     'Pinned by both partners.',
-    4,
+    5,
     {
       visual: 'memory',
       tone: 'success',

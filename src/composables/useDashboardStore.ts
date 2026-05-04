@@ -3,7 +3,7 @@ import { defaultState } from '@/data/defaults'
 import { i18n } from '@/i18n'
 import { canStorePreferences } from '@/composables/usePrivacyConsent'
 import { isSupabaseConfigured, supabase } from '@/services/supabase'
-import type { CoupleAlert, DashboardState, DashboardWidget } from '@/types'
+import type { CoupleAlert, DashboardState, DashboardWidget, TimelineEntry } from '@/types'
 
 const storageKey = 'couple-dash-state-v1'
 const channelName = 'couple-dash-realtime'
@@ -59,6 +59,24 @@ function persistLocalState() {
   broadcast?.postMessage(state.value)
 }
 
+function mapTimelineEntries(value: unknown): TimelineEntry[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((entry, index) => {
+    const item = entry as Partial<TimelineEntry>
+
+    return {
+      id: String(item.id || `milestone-${index + 1}`),
+      date: String(item.date ?? ''),
+      title: String(item.title ?? ''),
+      description: String(item.description ?? ''),
+      icon: String(item.icon || 'i-lucide-heart'),
+    }
+  })
+}
+
 function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
   return {
     id: String(row.id),
@@ -76,6 +94,7 @@ function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
     numericValue: row.numeric_value === null ? undefined : Number(row.numeric_value ?? 0),
     tone: String(row.tone ?? 'info') as DashboardWidget['tone'],
     visible: Boolean(row.visible ?? true),
+    timelineEntries: mapTimelineEntries(row.timeline_entries),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
   }
 }
@@ -259,6 +278,7 @@ export function useDashboardStore(coupleSlug?: string) {
         p_visual: patch.visual,
         p_tone: patch.tone,
         p_numeric_value: patch.numericValue,
+        p_timeline_entries: patch.timelineEntries,
       })
 
       if (updateError) {
@@ -271,43 +291,6 @@ export function useDashboardStore(coupleSlug?: string) {
     }
 
     applyLocalWidgetUpdate(widgetId, patch)
-  }
-
-  async function addWidget(widget: Omit<DashboardWidget, 'id' | 'updatedAt' | 'order'>) {
-    if (supabase) {
-      const { error: addError } = await supabase.rpc('add_dashboard_widget', {
-        p_couple_id: widget.coupleId,
-        p_label: widget.label,
-        p_value: widget.value,
-        p_unit: widget.unit,
-        p_detail: widget.detail,
-        p_scope: widget.scope,
-        p_person_id: widget.personId,
-        p_visual: widget.visual,
-        p_sort_order: widgets.value.length + 1,
-        p_min_value: widget.min,
-        p_max_value: widget.max,
-        p_numeric_value: widget.numericValue,
-        p_tone: widget.tone,
-      })
-
-      if (addError) {
-        error.value = addError.message
-        throw addError
-      }
-
-      await loadCouple()
-      return
-    }
-
-    state.value.widgets.push({
-      ...widget,
-      id: crypto.randomUUID(),
-      order: widgets.value.length + 1,
-      visible: true,
-      updatedAt: new Date().toISOString(),
-    })
-    persistLocalState()
   }
 
   async function setWidgetVisible(widgetId: string, visible: boolean) {
@@ -394,7 +377,6 @@ export function useDashboardStore(coupleSlug?: string) {
     isSupabaseConfigured,
     loadCouple,
     updateWidget,
-    addWidget,
     setWidgetVisible,
     triggerAlert,
     setAlertActive,

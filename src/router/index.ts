@@ -1,11 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AdminView from '../views/AdminView.vue'
-import DashboardView from '../views/DashboardView.vue'
-import EditView from '../views/EditView.vue'
-import HomeView from '../views/HomeView.vue'
-import ImpressumView from '../views/ImpressumView.vue'
-import InviteView from '../views/InviteView.vue'
-import PrivacyView from '../views/PrivacyView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,12 +6,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/display/:coupleSlug',
       name: 'display',
-      component: DashboardView,
+      component: () => import('../views/DashboardView.vue'),
     },
     {
       path: '/couples/:coupleSlug',
@@ -27,27 +20,27 @@ const router = createRouter({
     {
       path: '/edit/:coupleSlug',
       name: 'edit',
-      component: EditView,
+      component: () => import('../views/EditView.vue'),
     },
     {
       path: '/invite/:coupleSlug/:partnerSlug',
       name: 'invite',
-      component: InviteView,
+      component: () => import('../views/InviteView.vue'),
     },
     {
       path: '/admin',
       name: 'admin',
-      component: AdminView,
+      component: () => import('../views/AdminView.vue'),
     },
     {
       path: '/impressum',
       name: 'impressum',
-      component: ImpressumView,
+      component: () => import('../views/ImpressumView.vue'),
     },
     {
       path: '/datenschutz',
       name: 'privacy',
-      component: PrivacyView,
+      component: () => import('../views/PrivacyView.vue'),
     },
   ],
 })

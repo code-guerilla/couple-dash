@@ -92,13 +92,14 @@ create table if not exists public.dashboard_widget (
   detail text not null default '',
   scope text not null check (scope in ('shared', 'person')),
   person_id uuid references public.partner(id) on delete cascade,
-  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory')),
+  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory', 'timeline')),
   sort_order integer not null default 0,
   min_value numeric,
   max_value numeric,
   numeric_value numeric,
   tone text not null default 'info' check (tone in ('info', 'success', 'warning', 'error')),
   visible boolean not null default true,
+  timeline_entries jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now(),
   constraint dashboard_widget_scope_person_check check (
     (scope = 'shared' and person_id is null)
@@ -130,6 +131,7 @@ alter table public.partner add column if not exists user_id uuid references auth
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.partner drop column if exists edit_token;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
+alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
 update public.dashboard_widget set visual = 'stat' where visual = 'status';
 update public.dashboard_widget set visual = 'progress' where visual = 'latency';
 update public.dashboard_widget set visual = 'bar' where visual = 'allocation';
@@ -162,19 +164,10 @@ begin
   end if;
 end $$;
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'dashboard_widget_visual_check'
-      and conrelid = 'public.dashboard_widget'::regclass
-  ) then
-    alter table public.dashboard_widget
-      add constraint dashboard_widget_visual_check
-      check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory'));
-  end if;
-end $$;
+alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
+alter table public.dashboard_widget
+  add constraint dashboard_widget_visual_check
+  check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory', 'timeline'));
 
 do $$
 begin
@@ -552,12 +545,35 @@ begin
     sort_order,
     max_value,
     numeric_value,
-    tone
+    tone,
+    timeline_entries
   ) values
-    (new_couple_id, 'Days Together', '0', 'Update this together from the partner console.', 'shared', null, 'stat', 1, null, null, 'info'),
-    (new_couple_id, 'Wedding Countdown', 'Set', 'Keep the next milestone visible on the dashboard.', 'shared', null, 'stat', 2, null, null, 'success'),
-    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 3, null, null, 'info'),
-    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 4, null, null, 'info');
+    (
+      new_couple_id,
+      'Our Timeline',
+      '7 milestones',
+      'The relationship milestones that make the dashboard personal.',
+      'shared',
+      null,
+      'timeline',
+      1,
+      null,
+      null,
+      'success',
+      jsonb_build_array(
+        jsonb_build_object('id', 'first-met', 'date', p_relationship_start, 'title', 'First Met', 'description', 'The first chapter of the story.', 'icon', 'i-lucide-sparkles'),
+        jsonb_build_object('id', 'first-date', 'date', p_relationship_start, 'title', 'First Date', 'description', 'The first proper date worth remembering.', 'icon', 'i-lucide-heart'),
+        jsonb_build_object('id', 'official-couple', 'date', p_anniversary_date, 'title', 'Officially a Couple', 'description', 'The anniversary date that anchors the dashboard.', 'icon', 'i-lucide-badge-check'),
+        jsonb_build_object('id', 'moved-together', 'date', p_anniversary_date, 'title', 'Moved Together', 'description', 'One place, two routines, shared keys.', 'icon', 'i-lucide-home'),
+        jsonb_build_object('id', 'fur-baby', 'date', p_anniversary_date, 'title', 'Fur-Baby Date', 'description', 'The day the household got cuter.', 'icon', 'i-lucide-paw-print'),
+        jsonb_build_object('id', 'engagement', 'date', p_anniversary_date, 'title', 'The Engagement', 'description', 'A yes worth keeping visible.', 'icon', 'i-lucide-gem'),
+        jsonb_build_object('id', 'wedding', 'date', p_wedding_date, 'title', 'The Wedding', 'description', 'The big day on the shared calendar.', 'icon', 'i-lucide-church')
+      )
+    ),
+    (new_couple_id, 'Days Together', '0', 'Update this together from the partner console.', 'shared', null, 'stat', 2, null, null, 'info', '[]'::jsonb),
+    (new_couple_id, 'Wedding Countdown', 'Set', 'Keep the next milestone visible on the dashboard.', 'shared', null, 'stat', 3, null, null, 'success', '[]'::jsonb),
+    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 4, null, null, 'info', '[]'::jsonb),
+    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 5, null, null, 'info', '[]'::jsonb);
 
   insert into public.couple_alert (couple_id, title, detail, severity, source)
   values (
@@ -796,6 +812,7 @@ begin
 end;
 $$;
 
+drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric);
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
   p_label text,
@@ -804,7 +821,8 @@ create or replace function public.update_dashboard_widget(
   p_detail text,
   p_visual text,
   p_tone text,
-  p_numeric_value numeric
+  p_numeric_value numeric,
+  p_timeline_entries jsonb default null
 ) returns void
 language plpgsql
 security definer
@@ -840,6 +858,7 @@ begin
         visual = coalesce(p_visual, visual),
         tone = coalesce(p_tone, tone),
         numeric_value = p_numeric_value,
+        timeline_entries = coalesce(p_timeline_entries, timeline_entries),
         updated_at = now()
   where id = p_widget_id;
 end;
@@ -1144,24 +1163,6 @@ using (
   or (visible = true and public.is_display_device_for_couple(couple_id))
 );
 
-create policy "Members insert shared widgets"
-on public.dashboard_widget for insert
-to authenticated
-with check (
-  scope = 'shared'
-  and person_id is null
-  and public.is_couple_member(couple_id)
-);
-
-create policy "Members insert own person widgets"
-on public.dashboard_widget for insert
-to authenticated
-with check (
-  scope = 'person'
-  and person_id is not null
-  and public.is_current_partner_for_widget(couple_id, person_id)
-);
-
 create policy "Members update shared widgets"
 on public.dashboard_widget for update
 to authenticated
@@ -1232,7 +1233,7 @@ grant select (id, couple_id, slug, name, role, accent, created_at)
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
 grant select, insert, update, delete on public.display_device to authenticated;
-grant select, insert, update, delete on public.dashboard_widget to authenticated;
+grant select, update, delete on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function public.is_app_admin() to authenticated;
@@ -1246,8 +1247,7 @@ grant execute on function public.admin_get_tenant(uuid) to authenticated;
 grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, text, uuid, text, text, uuid, text, text) to authenticated;
 grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
 grant execute on function public.admin_delete_tenant(uuid) to authenticated;
-grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric) to authenticated;
-grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text) to authenticated;
+grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb) to authenticated;
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
 grant execute on function public.set_alert_active(uuid, boolean) to authenticated;
 grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text) to authenticated;

@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import MetricTile from '@/components/MetricTile.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
+import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { supabase } from '@/services/supabase'
@@ -22,7 +23,10 @@ const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashbo
 )
 
 const sharedWidgets = computed(() =>
-  visibleWidgets.value.filter((widget) => widget.scope === 'shared'),
+  visibleWidgets.value.filter((widget) => widget.scope === 'shared' && widget.visual !== 'timeline'),
+)
+const timelineWidgets = computed(() =>
+  visibleWidgets.value.filter((widget) => widget.visual === 'timeline'),
 )
 const personWidgets = computed(() =>
   visibleWidgets.value.filter((widget) => widget.scope === 'person'),
@@ -168,6 +172,14 @@ onMounted(async () => {
     <div v-if="loading" class="grid gap-4 md:grid-cols-3">
       <USkeleton v-for="item in 6" :key="item" class="h-44" />
     </div>
+
+    <section v-if="timelineWidgets.length" class="grid gap-4 xl:grid-cols-2">
+      <RelationshipTimelineWidget
+        v-for="widget in timelineWidgets"
+        :key="widget.id"
+        :widget="widget"
+      />
+    </section>
 
     <section class="space-y-4">
       <div class="flex items-center justify-between">
