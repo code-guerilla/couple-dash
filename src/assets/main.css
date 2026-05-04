@@ -44,9 +44,10 @@
 }
 
 @font-face {
-  font-family: 'Playfair Display';
-  src: url('/fonts/playfair-display/playfair-display-latin-wght-normal.woff2') format('woff2');
-  font-weight: 400 900;
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk/space-grotesk-latin-wght-normal.woff2')
+    format('woff2-variations');
+  font-weight: 300 700;
   font-style: normal;
   font-display: swap;
 }

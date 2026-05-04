@@ -37,7 +37,7 @@ const fontStacks = {
   'Atkinson Hyperlegible': '"Atkinson Hyperlegible", system-ui, sans-serif',
   Merriweather: '"Merriweather", Georgia, serif',
   'JetBrains Mono': '"JetBrains Mono", ui-monospace, monospace',
-  'Playfair Display': '"Playfair Display", Georgia, serif',
+  'Space Grotesk': '"Space Grotesk", system-ui, sans-serif',
 } as const
 const fonts = Object.keys(fontStacks)
 
@@ -52,10 +52,12 @@ const theme = ref<ThemeState>({ ...defaultTheme })
 let hasReadSavedTheme = false
 
 function normalizeTheme(value: Partial<ThemeState>): ThemeState {
+  const font = value.font === 'Playfair Display' ? 'Space Grotesk' : value.font
+
   return {
     ...defaultTheme,
     ...value,
-    font: value.font && value.font in fontStacks ? value.font : defaultTheme.font,
+    font: font && font in fontStacks ? font : defaultTheme.font,
   }
 }
 

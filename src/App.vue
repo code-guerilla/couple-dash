@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute } from 'vue-router'
 import { de, en } from '@nuxt/ui/locale'
@@ -13,6 +13,10 @@ const route = useRoute()
 const { locale, t } = useI18n()
 
 const uiLocale = computed(() => (locale.value === 'de' ? de : en))
+
+watchEffect(() => {
+  document.title = t('app.brand')
+})
 
 const items = computed<NavigationMenuItem[]>(() => [
   {

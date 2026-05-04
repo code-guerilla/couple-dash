@@ -15,6 +15,7 @@
     "format": "oxfmt src/"
   },
   "dependencies": {
+    "@fontsource-variable/space-grotesk": "^5.2.10",
     "@nuxt/ui": "^4.7.1",
     "@supabase/supabase-js": "^2.105.1",
     "qrcode": "^1.5.4",
@@ -56,8 +57,5 @@
     "@vue/server-renderer": "beta",
     "@vue/shared": "beta",
     "vue": "beta"
-  },
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
   }
 }

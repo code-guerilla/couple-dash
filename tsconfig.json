@@ -1,5 +1,6 @@
 {
   "files": [],
+  "topojson-client": "beta",
   "references": [
     {
       "path": "./tsconfig.node.json"
