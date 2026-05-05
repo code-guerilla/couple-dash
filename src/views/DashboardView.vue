@@ -18,7 +18,9 @@ const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashbo
   coupleSlug.value,
 )
 
-const sharedWidgets = computed(() => visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'))
+const sharedWidgets = computed(() =>
+  visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'),
+)
 const timelineWidgets = computed(() =>
   visibleWidgets.value.filter((widget) => widget.visual === 'timeline'),
 )
@@ -58,10 +60,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 </script>
 
 <template>
-  <section
-    v-if="isSupabaseConfigured && initialized && !isAuthenticated"
-    class="mx-auto max-w-md"
-  >
+  <section v-if="isSupabaseConfigured && initialized && !isAuthenticated" class="mx-auto max-w-md">
     <AuthPanel />
   </section>
 
@@ -72,7 +71,10 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
   </section>
 
   <section v-else-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
-    <AlertFeed class="relative left-1/2 -mt-8 w-screen -translate-x-1/2 sm:-mt-10" :alerts="alerts" />
+    <AlertFeed
+      class="relative left-1/2 -mt-8 w-screen -translate-x-1/2 sm:-mt-10"
+      :alerts="alerts"
+    />
 
     <div class="grid gap-4">
       <UCard :ui="{ body: 'p-6 sm:p-10' }">
@@ -178,11 +180,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
           <h1 class="text-2xl font-black">{{ t('dashboard.claimTitle') }}</h1>
           <p class="text-sm text-muted">{{ t('dashboard.claimDescription') }}</p>
         </div>
-        <UAlert
-          color="warning"
-          variant="soft"
-          :description="error ?? t('dashboard.unavailable')"
-        />
+        <UAlert color="warning" variant="soft" :description="error ?? t('dashboard.unavailable')" />
       </div>
     </UCard>
   </section>

@@ -22,18 +22,17 @@ function dateOnlyTime(value: string) {
 const timelineEntries = computed(() =>
   (props.widget.timelineEntries ?? [])
     .filter((entry) => entry.id !== 'first-date')
-    .filter((entry) => entry.title || entry.date)
+    .filter((entry) => entry.title || entry.date),
 )
 
 const items = computed(() =>
-  timelineEntries.value
-    .map((entry) => ({
-      date: entry.date ? new Date(entry.date).toLocaleDateString(locale.value) : '',
-      title: entry.title,
-      description: entry.description,
-      icon: entry.icon || 'i-lucide-heart',
-      value: entry.id,
-    })),
+  timelineEntries.value.map((entry) => ({
+    date: entry.date ? new Date(entry.date).toLocaleDateString(locale.value) : '',
+    title: entry.title,
+    description: entry.description,
+    icon: entry.icon || 'i-lucide-heart',
+    value: entry.id,
+  })),
 )
 
 const activeMilestone = computed(() => {

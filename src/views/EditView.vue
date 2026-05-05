@@ -78,7 +78,9 @@ const pendingInviteUrl = computed(() => {
   return `${origin}/invite/${pendingInvite.value.couple_slug}/${pendingInvite.value.partner_slug}?token=${pendingInvite.value.invite_token}`
 })
 const editableWidgets = computed(() => widgets.value)
-const editableMetricWidgets = computed(() => editableWidgets.value.filter((widget) => widget.visual !== 'timeline'))
+const editableMetricWidgets = computed(() =>
+  editableWidgets.value.filter((widget) => widget.visual !== 'timeline'),
+)
 const editableTimelineWidgets = computed(() =>
   editableWidgets.value.filter((widget) => widget.visual === 'timeline'),
 )
@@ -821,7 +823,10 @@ onMounted(() => {
                   <UTextarea v-model="widget.detail" autoresize class="w-full" />
                 </UFormField>
 
-                <div v-if="isChartWidget(widget)" class="grid gap-3 rounded-md border border-default p-3">
+                <div
+                  v-if="isChartWidget(widget)"
+                  class="grid gap-3 rounded-md border border-default p-3"
+                >
                   <div v-if="widget.visual === 'donut'" class="grid gap-3 sm:grid-cols-2">
                     <UFormField :label="t('edit.chartCentralLabel')">
                       <UInput v-model="widget.chartOptions.centralLabel" class="w-full" />

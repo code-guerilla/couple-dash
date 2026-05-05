@@ -17,6 +17,7 @@
    - `invite_token_hash = extensions.crypt('plain-invite-token', extensions.gen_salt('bf'))`
 
 The frontend routes are private by design:
+
 - `/display/:slug` requires a linked partner account or app admin account.
 - `/invite/:slug/:partnerSlug?token=...` signs in with Google or magic link, then links that Supabase Auth user to a `partner`.
 - `/edit/:slug` requires a linked partner session.

@@ -118,11 +118,7 @@ function percentageOfTotal(value: number) {
       <template v-else-if="widget.visual === 'bar'">
         <div v-if="hasChartData" class="chart-surface h-64 px-2">
           <VisXYContainer :data="widget.chartData" height="100%" :padding="{ top: 24, left: 8 }">
-            <VisStackedBar
-              :x="chartX"
-              :y="chartY"
-              :color="toneColors[widget.tone]"
-            />
+            <VisStackedBar :x="chartX" :y="chartY" :color="toneColors[widget.tone]" />
             <VisAxis type="x" :x="chartX" :tick-format="chartTickFormat" />
             <VisAxis type="y" />
             <VisCrosshair :color="toneColors[widget.tone]" :template="chartTooltip" />

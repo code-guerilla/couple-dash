@@ -20,14 +20,14 @@ const fields = computed<AuthFormField[]>(() => [
   ...(isAdminMode.value
     ? []
     : [
-      {
-        name: 'email',
-        type: 'email',
-        label: 'Email',
-        placeholder: 'you@example.com',
-        required: true,
-      },
-    ]),
+        {
+          name: 'email',
+          type: 'email',
+          label: 'Email',
+          placeholder: 'you@example.com',
+          required: true,
+        },
+      ]),
 ])
 
 const providers = computed<ButtonProps[]>(() => [
