@@ -32,6 +32,7 @@ export interface AdminTenantPartner {
   name: string
   role: string
   accent: string
+  hunger_level: string
   avatar_path: string | null
   accepted: boolean
 }

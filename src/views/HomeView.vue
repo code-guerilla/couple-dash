@@ -57,12 +57,12 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
 <template>
   <section class="mx-auto max-w-5xl space-y-8">
     <div class="space-y-4">
-      <UBadge color="info" variant="soft">{{ t('home.badge') }}</UBadge>
+      <UBadge color="info" variant="soft">Multi tenant couple dashboards</UBadge>
       <h1 class="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">
-        {{ t('home.title') }}
+        CoupleDash
       </h1>
       <p class="max-w-2xl text-lg text-muted">
-        {{ t('home.description') }}
+        Private couple dashboards are loaded only after a linked partner or app admin account signs in.
       </p>
     </div>
 
@@ -93,8 +93,8 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
 
         <section class="space-y-3">
           <div>
-            <h2 class="text-2xl font-black">{{ t('home.accountTitle') }}</h2>
-            <p class="text-sm text-muted">{{ t('home.accountDescription') }}</p>
+            <h2 class="text-2xl font-black">Your couple dashboard</h2>
+            <p class="text-sm text-muted">Only couple dashboards linked to this account appear here.</p>
           </div>
 
           <div v-if="myCouples.length" class="grid gap-4 md:grid-cols-2">
@@ -148,7 +148,7 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
             v-else
             color="neutral"
             variant="soft"
-            :description="loadingCouples ? t('home.loadingCouples') : t('home.noCouples')"
+            :description="loadingCouples ? t('home.loadingCouples') : 'No couple dashboard is linked to this account yet. Use your invite link first.'"
           />
         </section>
       </template>

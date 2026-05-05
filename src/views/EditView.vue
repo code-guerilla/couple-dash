@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
+import PartnerHungerLevelPanel from '@/components/PartnerHungerLevelPanel.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { alertTemplates } from '@/data/alertTemplates'
@@ -41,6 +42,7 @@ const {
   error,
   loadCouple,
   updateWidget,
+  updatePartnerHungerLevel,
   addWidget,
   deleteWidget,
   setWidgetVisible,
@@ -726,6 +728,11 @@ onMounted(() => {
         </div>
       </div>
     </UCard>
+
+    <PartnerHungerLevelPanel
+      :partners="couple.partners"
+      :update-hunger-level="updatePartnerHungerLevel"
+    />
 
     <div class="grid gap-3 sm:grid-cols-2">
       <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-4' }">

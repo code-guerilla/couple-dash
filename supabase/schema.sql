@@ -25,6 +25,7 @@ create table if not exists public.partner (
   name text not null,
   role text not null default '',
   accent text not null default 'primary',
+  hunger_level text not null default 'full',
   avatar_path text,
   invite_token_hash text,
   created_at timestamptz not null default now(),
@@ -77,6 +78,10 @@ create table if not exists public.couple_alert (
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
 alter table public.couple drop column if exists anniversary_date;
 alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table public.partner add column if not exists hunger_level text not null default 'full';
+alter table public.partner alter column hunger_level set default 'full';
+update public.partner set hunger_level = 'full' where hunger_level is null;
+alter table public.partner alter column hunger_level set not null;
 alter table public.partner add column if not exists avatar_path text;
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
@@ -152,6 +157,11 @@ begin
       check (accent in ('primary', 'secondary', 'accent', 'info', 'success', 'warning', 'error'));
   end if;
 end $$;
+
+alter table public.partner drop constraint if exists partner_hunger_level_check;
+alter table public.partner
+  add constraint partner_hunger_level_check
+  check (hunger_level in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical'));
 
 do $$
 begin
@@ -273,6 +283,7 @@ drop function if exists public.admin_create_tenant(text, text, text, date, date,
 drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text);
 drop function if exists public.admin_get_tenant(uuid);
 drop function if exists public.update_partner_avatar(uuid, text);
+drop function if exists public.update_partner_hunger_level(uuid, text);
 
 create or replace function public.list_my_couples()
 returns table (
@@ -606,6 +617,41 @@ begin
 end;
 $$;
 
+create or replace function public.update_partner_hunger_level(
+  p_partner_id uuid,
+  p_hunger_level text
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_partner public.partner%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_hunger_level not in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical') then
+    raise exception 'Invalid hunger level';
+  end if;
+
+  select partner.*
+    into target_partner
+  from public.partner partner
+  where partner.id = p_partner_id
+    and public.is_couple_member(partner.couple_id);
+
+  if target_partner.id is null then
+    raise exception 'Not allowed';
+  end if;
+
+  update public.partner
+    set hunger_level = p_hunger_level
+  where id = target_partner.id;
+end;
+$$;
+
 create or replace function public.admin_get_tenant(p_couple_id uuid)
 returns table (
   couple_id uuid,
@@ -636,6 +682,7 @@ as $$
           'name', partner.name,
           'role', partner.role,
           'accent', partner.accent,
+          'hunger_level', partner.hunger_level,
           'avatar_path', partner.avatar_path,
           'accepted', partner.user_id is not null
         )
@@ -1307,7 +1354,7 @@ grant insert, update, delete on public.app_admin to authenticated;
 grant select (id, slug, name, subtitle, relationship_start, wedding_date, created_at)
   on public.couple to authenticated;
 grant insert, update, delete on public.couple to authenticated;
-grant select (id, couple_id, slug, name, role, accent, avatar_path, created_at)
+grant select (id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at)
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
@@ -1321,6 +1368,7 @@ grant execute on function public.list_my_couples() to authenticated;
 grant execute on function public.get_couple_invite_status(uuid) to authenticated;
 grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
 grant execute on function public.update_partner_avatar(uuid, text) to authenticated;
+grant execute on function public.update_partner_hunger_level(uuid, text) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
@@ -1341,6 +1389,16 @@ begin
     from pg_publication
     where pubname = 'supabase_realtime'
   ) then
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'partner'
+    ) then
+      alter publication supabase_realtime add table public.partner;
+    end if;
+
     if not exists (
       select 1
       from pg_publication_tables

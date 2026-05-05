@@ -1,5 +1,6 @@
 import { computed, readonly, ref } from 'vue'
 import { i18n } from '@/i18n'
+import { isHungerLevelValue } from '@/data/hungerLevels'
 import { partnerAvatarBucket, supabase } from '@/services/supabase'
 import type {
   ChartDataPoint,
@@ -7,6 +8,7 @@ import type {
   CoupleAlert,
   DashboardState,
   DashboardWidget,
+  HungerLevelValue,
   TimelineEntry,
 } from '@/types'
 
@@ -163,7 +165,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
   const { data: couple, error: coupleError } = await supabase
     .from('couple')
     .select(
-      'id, slug, name, subtitle, relationship_start, wedding_date, created_at, partner(id, couple_id, slug, name, role, accent, avatar_path, created_at)',
+      'id, slug, name, subtitle, relationship_start, wedding_date, created_at, partner(id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at)',
     )
     .eq('slug', coupleSlug)
     .single()
@@ -221,6 +223,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
           name: String(partner.name),
           role: String(partner.role ?? ''),
           accent: String(partner.accent ?? 'primary'),
+          hungerLevel: isHungerLevelValue(partner.hunger_level) ? partner.hunger_level : 'full',
           avatarPath: partner.avatar_path ? String(partner.avatar_path) : undefined,
           avatarUrl: signedAvatarUrls.get(String(partner.id)),
           avatarFallback: partnerAvatarFallbacks[index],
@@ -328,6 +331,23 @@ export function useDashboardStore(coupleSlug?: string) {
     if (updateError) {
       error.value = updateError.message
       throw updateError
+    }
+
+    await loadCouple()
+  }
+
+  async function updatePartnerHungerLevel(partnerId: string, hungerLevel: HungerLevelValue) {
+    if (!supabase) {
+      throw new Error(t('dashboard.supabaseRequired'))
+    }
+
+    const { error: updateError } = await supabase.rpc('update_partner_hunger_level', {
+      p_partner_id: partnerId,
+      p_hunger_level: hungerLevel,
+    })
+
+    if (updateError) {
+      throw new Error(mapSupabaseError(updateError.message))
     }
 
     await loadCouple()
@@ -452,6 +472,7 @@ export function useDashboardStore(coupleSlug?: string) {
     error: readonly(error),
     loadCouple,
     updateWidget,
+    updatePartnerHungerLevel,
     addWidget,
     deleteWidget,
     setWidgetVisible,

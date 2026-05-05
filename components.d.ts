@@ -16,6 +16,7 @@ declare module 'vue' {
     AuthPanel: typeof import('./src/components/AuthPanel.vue')['default']
     LocaleSwitcher: typeof import('./src/components/LocaleSwitcher.vue')['default']
     MetricTile: typeof import('./src/components/MetricTile.vue')['default']
+    PartnerHungerLevelPanel: typeof import('./src/components/PartnerHungerLevelPanel.vue')['default']
     QrCodeCard: typeof import('./src/components/QrCodeCard.vue')['default']
     RelationshipTimelineWidget: typeof import('./src/components/RelationshipTimelineWidget.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

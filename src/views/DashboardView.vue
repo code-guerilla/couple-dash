@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import MetricTile from '@/components/MetricTile.vue'
+import PartnerHungerLevelPanel from '@/components/PartnerHungerLevelPanel.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
@@ -14,9 +15,8 @@ const route = useRoute()
 const { locale, t } = useI18n()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
-const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
-  coupleSlug.value,
-)
+const { couple, visibleWidgets, alerts, loading, error, loadCouple, updatePartnerHungerLevel } =
+  useDashboardStore(coupleSlug.value)
 
 const sharedWidgets = computed(() =>
   visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'),
@@ -146,6 +146,11 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
         </div>
       </UCard>
     </div>
+
+    <PartnerHungerLevelPanel
+      :partners="couple.partners"
+      :update-hunger-level="updatePartnerHungerLevel"
+    />
 
     <div v-if="loading" class="grid gap-4 md:grid-cols-3">
       <USkeleton v-for="item in 6" :key="item" class="h-44" />

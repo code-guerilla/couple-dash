@@ -10,12 +10,21 @@ export type WidgetVisual =
 
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 
+export type HungerLevelValue =
+  | 'full'
+  | 'snack'
+  | 'getting-hungry'
+  | 'need-food'
+  | 'starving'
+  | 'critical'
+
 export interface Partner {
   id: string
   slug: string
   name: string
   role: string
   accent: string
+  hungerLevel: HungerLevelValue
   avatarPath?: string
   avatarUrl?: string
   avatarFallback?: string

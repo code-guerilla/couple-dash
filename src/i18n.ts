@@ -104,6 +104,13 @@ export const messages = {
       reserve: 'Reserve',
       updated: 'Updated {time}',
     },
+    hunger: {
+      title: 'Hunger level',
+      description: 'Current snack situation for both partners.',
+      level: 'Hunger level',
+      live: 'Live',
+      saveFailed: 'The hunger level could not be saved.',
+    },
     qr: {
       scanToEdit: 'Scan to edit live',
     },
@@ -320,6 +327,13 @@ export const messages = {
     metric: {
       shared: 'Gemeinsam',
       updated: 'Aktualisiert {time}',
+    },
+    hunger: {
+      title: 'Hunger-Level',
+      description: 'Aktuelle Snacksituation für beide Partner.',
+      level: 'Hunger-Level',
+      live: 'Live',
+      saveFailed: 'Der Hunger-Level konnte nicht gespeichert werden.',
     },
     theme: {
       settings: 'Theme Settings',
