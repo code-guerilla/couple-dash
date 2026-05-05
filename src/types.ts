@@ -16,6 +16,9 @@ export interface Partner {
   name: string
   role: string
   accent: string
+  avatarPath?: string
+  avatarUrl?: string
+  avatarFallback?: string
 }
 
 export interface Couple {

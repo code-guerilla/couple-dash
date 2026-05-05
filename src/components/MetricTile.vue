@@ -75,7 +75,7 @@ function percentageOfTotal(value: number) {
         <div class="min-w-0">
           <p class="text-xs font-medium uppercase text-muted">{{ widget.label }}</p>
           <h2
-            class="mt-1 break-words text-2xl font-semibold leading-tight text-highlighted sm:text-3xl"
+            class="mt-1 wrap-break-word text-2xl font-semibold leading-tight text-highlighted sm:text-3xl"
             :class="toneClasses[widget.tone]"
           >
             {{ valueWithUnit(widget) }}

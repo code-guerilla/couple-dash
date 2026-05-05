@@ -75,7 +75,7 @@ function alertCreator(alert: CoupleAlert) {
 
 <style scoped>
 .alert-strip-track {
-  animation: alert-strip-marquee 36s linear infinite;
+  animation: alert-strip-marquee 40s linear infinite;
 }
 
 .alert-strip-track:hover {

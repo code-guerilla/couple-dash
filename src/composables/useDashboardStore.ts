@@ -1,6 +1,6 @@
 import { computed, readonly, ref } from 'vue'
 import { i18n } from '@/i18n'
-import { supabase } from '@/services/supabase'
+import { partnerAvatarBucket, supabase } from '@/services/supabase'
 import type {
   ChartDataPoint,
   ChartOptions,
@@ -15,6 +15,7 @@ const state = ref<DashboardState>(emptyState)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const currentTime = ref(Date.now())
+const partnerAvatarFallbacks = ['🧑🏼‍🦱', '👱🏼‍♀️']
 let activeSubscription: { unsubscribe: () => void } | null = null
 
 if (typeof window !== 'undefined') {
@@ -127,6 +128,18 @@ function mapAlertFromRow(row: Record<string, unknown>): CoupleAlert {
   }
 }
 
+async function createSignedPartnerAvatarUrl(path: string) {
+  if (!supabase) {
+    return undefined
+  }
+
+  const { data, error: signedUrlError } = await supabase.storage
+    .from(partnerAvatarBucket)
+    .createSignedUrl(path, 60 * 60 * 24 * 7)
+
+  return signedUrlError ? undefined : data.signedUrl
+}
+
 function mapSupabaseError(message: string) {
   if (
     message.includes('JWT') ||
@@ -150,7 +163,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
   const { data: couple, error: coupleError } = await supabase
     .from('couple')
     .select(
-      'id, slug, name, subtitle, relationship_start, wedding_date, created_at, partner(id, couple_id, slug, name, role, accent, created_at)',
+      'id, slug, name, subtitle, relationship_start, wedding_date, created_at, partner(id, couple_id, slug, name, role, accent, avatar_path, created_at)',
     )
     .eq('slug', coupleSlug)
     .single()
@@ -181,6 +194,18 @@ async function loadSupabaseCouple(coupleSlug: string) {
     return
   }
 
+  const partnerRows = (couple.partner ?? []) as Record<string, unknown>[]
+  const signedAvatarUrls = new Map(
+    await Promise.all(
+      partnerRows.map(async (partner) => {
+        const avatarPath = partner.avatar_path ? String(partner.avatar_path) : ''
+        const avatarUrl = avatarPath ? await createSignedPartnerAvatarUrl(avatarPath) : undefined
+
+        return [String(partner.id), avatarUrl] as const
+      }),
+    ),
+  )
+
   state.value = {
     couples: [
       {
@@ -190,12 +215,15 @@ async function loadSupabaseCouple(coupleSlug: string) {
         subtitle: String(couple.subtitle ?? ''),
         relationshipStart: String(couple.relationship_start),
         weddingDate: String(couple.wedding_date),
-        partners: (couple.partner ?? []).map((partner: Record<string, unknown>) => ({
+        partners: partnerRows.map((partner: Record<string, unknown>, index) => ({
           id: String(partner.id),
           slug: String(partner.slug),
           name: String(partner.name),
           role: String(partner.role ?? ''),
           accent: String(partner.accent ?? 'primary'),
+          avatarPath: partner.avatar_path ? String(partner.avatar_path) : undefined,
+          avatarUrl: signedAvatarUrls.get(String(partner.id)),
+          avatarFallback: partnerAvatarFallbacks[index],
         })),
       },
     ],
@@ -216,6 +244,16 @@ function subscribeSupabaseCouple(coupleId: string, coupleSlug: string) {
 
   activeSubscription = supabase
     .channel(`couple-dashboard:${coupleId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'partner',
+        filter: `couple_id=eq.${coupleId}`,
+      },
+      () => void loadSupabaseCouple(coupleSlug),
+    )
     .on(
       'postgres_changes',
       {

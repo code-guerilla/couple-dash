@@ -6,7 +6,15 @@ import AuthPanel from '@/components/AuthPanel.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { alertTemplates } from '@/data/alertTemplates'
-import { supabase, type CoupleInviteStatus, type PendingPartnerInvite } from '@/services/supabase'
+import {
+  partnerAvatarBucket,
+  partnerAvatarExtension,
+  partnerAvatarMaxSize,
+  partnerAvatarMimeTypes,
+  supabase,
+  type CoupleInviteStatus,
+  type PendingPartnerInvite,
+} from '@/services/supabase'
 import type {
   AlertSeverity,
   ChartDataPoint,
@@ -47,6 +55,9 @@ const pendingInvite = ref<PendingPartnerInvite | null>(null)
 const inviteError = ref<string | null>(null)
 const generatingInvite = ref(false)
 const customAlertDraft = ref('')
+const avatarFile = ref<File | null>(null)
+const avatarError = ref<string | null>(null)
+const uploadingAvatar = ref(false)
 const alertTemplateDrafts = ref<AlertTemplateDraft[]>([])
 const editingAlertTemplateId = ref<string | null>(null)
 const alertTemplateEditTitle = ref('')
@@ -85,6 +96,7 @@ const editableTimelineWidgets = computed(() =>
   editableWidgets.value.filter((widget) => widget.visual === 'timeline'),
 )
 const today = new Date().toISOString().slice(0, 10)
+const avatarAccept = partnerAvatarMimeTypes.join(',')
 
 const visualOptionValues: WidgetVisual[] = [
   'stat',
@@ -191,6 +203,76 @@ async function loadPrivateEditor() {
   await loadCouple()
   await loadMembership()
   await loadInviteStatus()
+}
+
+function formatBytes(bytes: number) {
+  return `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`
+}
+
+function validateAvatarFile(file: File) {
+  if (!partnerAvatarMimeTypes.includes(file.type)) {
+    return t('edit.avatarInvalidType')
+  }
+
+  if (file.size > partnerAvatarMaxSize) {
+    return t('edit.avatarTooLarge', { size: formatBytes(partnerAvatarMaxSize) })
+  }
+
+  return null
+}
+
+async function uploadPartnerAvatar() {
+  avatarError.value = null
+
+  if (!supabase || !couple.value || !partner.value || !avatarFile.value) {
+    return
+  }
+
+  const file = avatarFile.value
+  const validationError = validateAvatarFile(file)
+  if (validationError) {
+    avatarError.value = validationError
+    return
+  }
+
+  uploadingAvatar.value = true
+  const previousAvatarPath = partner.value.avatarPath
+  const avatarPath = `${couple.value.id}/${partner.value.id}/${crypto.randomUUID()}.${partnerAvatarExtension(file.type)}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(partnerAvatarBucket)
+    .upload(avatarPath, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false,
+    })
+
+  if (uploadError) {
+    avatarError.value = uploadError.message
+    uploadingAvatar.value = false
+    return
+  }
+
+  const { error: updateError } = await supabase.rpc('update_partner_avatar', {
+    p_partner_id: partner.value.id,
+    p_avatar_path: avatarPath,
+  })
+
+  if (updateError) {
+    await supabase.storage.from(partnerAvatarBucket).remove([avatarPath])
+    avatarError.value = updateError.message
+    uploadingAvatar.value = false
+    return
+  }
+
+  avatarFile.value = null
+  await loadCouple()
+
+  if (previousAvatarPath && previousAvatarPath !== avatarPath) {
+    await supabase.storage.from(partnerAvatarBucket).remove([previousAvatarPath])
+  }
+
+  uploadingAvatar.value = false
 }
 
 async function saveWidget(widget: DashboardWidget) {
@@ -596,6 +678,51 @@ onMounted(() => {
             type="button"
             @click="copyPendingInvite"
           />
+        </div>
+      </div>
+    </UCard>
+
+    <UCard v-if="partner" variant="subtle" :ui="{ body: 'p-4 sm:p-5' }">
+      <div class="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
+        <UAvatar
+          :src="partner.avatarUrl"
+          :text="partner.avatarUrl ? undefined : partner.avatarFallback"
+          :alt="partner.name"
+          size="3xl"
+          class="ring ring-default"
+        />
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-xl font-black">{{ t('edit.personalPhoto') }}</h2>
+            <UBadge color="neutral" variant="soft">{{ partner.name }}</UBadge>
+          </div>
+          <p class="mt-1 text-sm text-muted">{{ t('edit.personalPhotoDescription') }}</p>
+
+          <form
+            class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+            @submit.prevent="uploadPartnerAvatar"
+          >
+            <UFormField
+              :label="t('edit.avatarUpload')"
+              :description="t('edit.avatarFileHelp', { size: formatBytes(partnerAvatarMaxSize) })"
+              :error="avatarError ?? undefined"
+            >
+              <UFileUpload
+                v-model="avatarFile"
+                :accept="avatarAccept"
+                :label="t('edit.choosePhoto')"
+                variant="button"
+                color="neutral"
+              />
+            </UFormField>
+            <UButton
+              icon="i-lucide-upload"
+              :label="t('edit.savePhoto')"
+              :disabled="!avatarFile"
+              :loading="uploadingAvatar"
+              type="submit"
+            />
+          </form>
         </div>
       </div>
     </UCard>

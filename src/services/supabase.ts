@@ -32,6 +32,7 @@ export interface AdminTenantPartner {
   name: string
   role: string
   accent: string
+  avatar_path: string | null
   accepted: boolean
 }
 
@@ -71,6 +72,22 @@ export interface PendingPartnerInvite {
 }
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey)
+
+export const partnerAvatarBucket = 'partner-avatars'
+export const partnerAvatarMaxSize = 2 * 1024 * 1024
+export const partnerAvatarMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
+export function partnerAvatarExtension(mimeType: string) {
+  if (mimeType === 'image/png') {
+    return 'png'
+  }
+
+  if (mimeType === 'image/webp') {
+    return 'webp'
+  }
+
+  return 'jpg'
+}
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseKey!, {

@@ -80,9 +80,25 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       <UCard :ui="{ body: 'p-6 sm:p-10' }">
         <div class="w-full justify-start">
           <div class="max-w-4xl">
-            <div class="mb-5 flex flex-wrap gap-2">
-              <UBadge color="success" variant="soft">{{ t('dashboard.privateSession') }}</UBadge>
-              <UBadge color="neutral" variant="soft">{{ t('dashboard.protectedRealtime') }}</UBadge>
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap gap-2">
+                <UBadge color="success" variant="soft">{{ t('dashboard.privateSession') }}</UBadge>
+                <UBadge color="neutral" variant="soft">{{
+                  t('dashboard.protectedRealtime')
+                }}</UBadge>
+              </div>
+              <div class="flex -space-x-2">
+                <UAvatar
+                  v-for="partner in couple.partners"
+                  :key="partner.id"
+                  :src="partner.avatarUrl"
+                  :text="partner.avatarUrl ? undefined : partner.avatarFallback"
+                  :alt="partner.name"
+                  size="lg"
+                  class="ring-2 ring-default"
+                  loading="lazy"
+                />
+              </div>
             </div>
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
             <p class="mt-4 max-w-2xl text-lg text-muted">{{ couple.subtitle }}</p>

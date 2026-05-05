@@ -25,6 +25,7 @@ create table if not exists public.partner (
   name text not null,
   role text not null default '',
   accent text not null default 'primary',
+  avatar_path text,
   invite_token_hash text,
   created_at timestamptz not null default now(),
   unique (couple_id, slug),
@@ -76,6 +77,7 @@ create table if not exists public.couple_alert (
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
 alter table public.couple drop column if exists anniversary_date;
 alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table public.partner add column if not exists avatar_path text;
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
 alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
@@ -172,6 +174,7 @@ alter table public.dashboard_widget
 create index if not exists couple_slug_idx on public.couple (slug);
 create index if not exists partner_couple_id_idx on public.partner (couple_id);
 create index if not exists partner_user_id_idx on public.partner (user_id);
+create index if not exists partner_avatar_path_idx on public.partner (avatar_path) where avatar_path is not null;
 create index if not exists couple_member_user_id_idx on public.couple_member (user_id);
 create index if not exists couple_member_couple_id_idx on public.couple_member (couple_id);
 create index if not exists dashboard_widget_couple_sort_idx on public.dashboard_widget (couple_id, sort_order);
@@ -269,6 +272,7 @@ drop function if exists public.admin_list_tenants();
 drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text);
 drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text);
 drop function if exists public.admin_get_tenant(uuid);
+drop function if exists public.update_partner_avatar(uuid, text);
 
 create or replace function public.list_my_couples()
 returns table (
@@ -561,6 +565,47 @@ begin
 end;
 $$;
 
+create or replace function public.update_partner_avatar(
+  p_partner_id uuid,
+  p_avatar_path text
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_partner public.partner%rowtype;
+  expected_prefix text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select partner.*
+    into target_partner
+  from public.partner partner
+  join public.couple_member member
+    on member.couple_id = partner.couple_id
+   and member.partner_id = partner.id
+   and member.user_id = auth.uid()
+  where partner.id = p_partner_id;
+
+  if target_partner.id is null then
+    raise exception 'Not allowed';
+  end if;
+
+  expected_prefix := target_partner.couple_id::text || '/' || target_partner.id::text || '/';
+
+  if p_avatar_path is not null and p_avatar_path not like expected_prefix || '%' then
+    raise exception 'Invalid avatar path';
+  end if;
+
+  update public.partner
+    set avatar_path = p_avatar_path
+  where id = target_partner.id;
+end;
+$$;
+
 create or replace function public.admin_get_tenant(p_couple_id uuid)
 returns table (
   couple_id uuid,
@@ -591,6 +636,7 @@ as $$
           'name', partner.name,
           'role', partner.role,
           'accent', partner.accent,
+          'avatar_path', partner.avatar_path,
           'accepted', partner.user_id is not null
         )
         order by partner.created_at
@@ -1063,6 +1109,19 @@ alter table public.couple_member enable row level security;
 alter table public.dashboard_widget enable row level security;
 alter table public.couple_alert enable row level security;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'partner-avatars',
+  'partner-avatars',
+  false,
+  2097152,
+  array['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 drop policy if exists "App admins view app admins" on public.app_admin;
 drop policy if exists "App admin view app_admin" on public.app_admin;
 drop policy if exists "App admins manage app admins" on public.app_admin;
@@ -1083,6 +1142,10 @@ drop policy if exists "App admins manage widgets" on public.dashboard_widget;
 drop policy if exists "Alerts are visible to members" on public.couple_alert;
 drop policy if exists "Members create partner alerts" on public.couple_alert;
 drop policy if exists "App admins manage alerts" on public.couple_alert;
+drop policy if exists "Members read partner avatars" on storage.objects;
+drop policy if exists "Partners upload own avatars" on storage.objects;
+drop policy if exists "Partners update own avatars" on storage.objects;
+drop policy if exists "Partners delete own avatars" on storage.objects;
 
 create policy "App admin view app_admin"
 on public.app_admin for select
@@ -1170,6 +1233,71 @@ to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
 
+create policy "Members read partner avatars"
+on storage.objects for select
+to authenticated
+using (
+  bucket_id = 'partner-avatars'
+  and exists (
+    select 1
+    from public.couple_member member
+    where member.couple_id::text = (storage.foldername(name))[1]
+      and member.user_id = auth.uid()
+  )
+);
+
+create policy "Partners upload own avatars"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'partner-avatars'
+  and exists (
+    select 1
+    from public.couple_member member
+    where member.couple_id::text = (storage.foldername(name))[1]
+      and member.partner_id::text = (storage.foldername(name))[2]
+      and member.user_id = auth.uid()
+  )
+);
+
+create policy "Partners update own avatars"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'partner-avatars'
+  and exists (
+    select 1
+    from public.couple_member member
+    where member.couple_id::text = (storage.foldername(name))[1]
+      and member.partner_id::text = (storage.foldername(name))[2]
+      and member.user_id = auth.uid()
+  )
+)
+with check (
+  bucket_id = 'partner-avatars'
+  and exists (
+    select 1
+    from public.couple_member member
+    where member.couple_id::text = (storage.foldername(name))[1]
+      and member.partner_id::text = (storage.foldername(name))[2]
+      and member.user_id = auth.uid()
+  )
+);
+
+create policy "Partners delete own avatars"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'partner-avatars'
+  and exists (
+    select 1
+    from public.couple_member member
+    where member.couple_id::text = (storage.foldername(name))[1]
+      and member.partner_id::text = (storage.foldername(name))[2]
+      and member.user_id = auth.uid()
+  )
+);
+
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public from anon, authenticated;
 grant usage on schema public to authenticated;
@@ -1179,7 +1307,7 @@ grant insert, update, delete on public.app_admin to authenticated;
 grant select (id, slug, name, subtitle, relationship_start, wedding_date, created_at)
   on public.couple to authenticated;
 grant insert, update, delete on public.couple to authenticated;
-grant select (id, couple_id, slug, name, role, accent, created_at)
+grant select (id, couple_id, slug, name, role, accent, avatar_path, created_at)
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
@@ -1192,6 +1320,7 @@ grant execute on function public.accept_partner_invite(text, text, text) to auth
 grant execute on function public.list_my_couples() to authenticated;
 grant execute on function public.get_couple_invite_status(uuid) to authenticated;
 grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
+grant execute on function public.update_partner_avatar(uuid, text) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
