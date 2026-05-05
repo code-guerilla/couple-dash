@@ -18,7 +18,7 @@ const isAdmin = ref(false)
 const uiLocale = computed(() => (locale.value === 'de' ? de : en))
 
 watchEffect(() => {
-  document.title = t('app.brand')
+  document.title = 'CoupleDash'
 })
 
 const items = computed<NavigationMenuItem[]>(() => {
@@ -59,12 +59,9 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
 
 <template>
   <UApp :locale="uiLocale">
-    <UHeader :title="t('app.brand')" to="/" :toggle="{ color: 'neutral', variant: 'ghost' }">
+    <UHeader :title="'CoupleDash'" to="/" :toggle="{ color: 'neutral', variant: 'ghost' }">
       <template #title>
-        <span
-          >{{ t('app.brandPrefix')
-          }}<span class="text-primary">{{ t('app.brandSuffix') }}</span></span
-        >
+        <span>Couple<span class="text-primary">Dash</span></span>
       </template>
 
       <UNavigationMenu :items="items" />

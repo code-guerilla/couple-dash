@@ -7,11 +7,6 @@ const storageKey = 'couple-dash-locale'
 
 export const messages = {
   en: {
-    app: {
-      brand: 'CoupleDash',
-      brandPrefix: 'Couple',
-      brandSuffix: 'Dash',
-    },
     nav: {
       home: 'Home',
       admin: 'Admin',
@@ -43,31 +38,27 @@ export const messages = {
       accessDataText:
         'When the site is hosted, the hosting provider may process technical access data such as IP address, time, requested URL, user agent, and status code to deliver and secure the site.',
       authTitle: 'Authentication and dashboard data',
-      authText:
-        'If Supabase is configured, login, invite, tenant, dashboard, widget, and alert data is processed to provide the private dashboard features. Authentication storage is required for signed-in sessions.',
-      storageTitle: 'Cookies and local storage',
-      storageText:
-        'The app does not use analytics or advertising cookies. With your consent, it stores language and theme preferences in localStorage. If you reject optional storage, these preferences are not persisted.',
-      thirdPartyTitle: 'Third-party services',
-      thirdPartyText:
-        'The app avoids external font loading. If Supabase is configured, Supabase acts as the backend service provider for authentication and database features.',
-      rightsTitle: 'Your rights',
-      rightsText:
-        'Under the GDPR you may request access, rectification, erasure, restriction of processing, data portability, and object to processing where legally applicable. You may also lodge a complaint with a competent supervisory authority.',
-      noLegalAdvice:
-        'This text is not legal advice. Have the final public version checked by a qualified lawyer or data protection professional.',
-    },
-    home: {
-      badge: 'Multi tenant couple dashboards',
-      title: 'CoupleDash',
-      description:
-        'Private couple dashboards are loaded only after a linked partner or app admin account signs in.',
-      adminTitle: 'Admin',
-      adminDescription: 'Manage all couple tenants, invites, and dashboard settings.',
-      displayTitle: 'Display',
-      displayDescription: 'Open your private display with a linked partner account.',
-      partnerTitle: 'Partner',
-      partnerDescription: 'Partners use /invite links once, then /edit/:slug with Supabase Auth.',
+      home: {
+        badge: 'Multi-Tenant Dashboards für Paare',
+        description:
+          'Private Paar-Dashboards werden erst geladen, wenn ein verknüpftes Partner- oder Admin-Konto angemeldet ist.',
+        adminDescription: 'Alle Paar-Tenants, Einladungen und Dashboard-Einstellungen verwalten.',
+        displayDescription: 'Öffne dein privates Display mit einem verknüpften Partnerkonto.',
+        partnerDescription:
+          'Partner nutzen /invite-Links einmalig und danach /edit/:slug mit Supabase Auth.',
+        accountTitle: 'Dein Paar-Dashboard',
+        accountDescription:
+          'Hier erscheinen nur Paar-Dashboards, die mit diesem Konto verknüpft sind.',
+        openDisplay: 'Display öffnen',
+        editDashboard: 'Dashboard bearbeiten',
+        loadingCouples: 'Dein Paar-Dashboard wird geladen...',
+        noCouples:
+          'Mit diesem Konto ist noch kein Paar-Dashboard verknüpft. Nutze zuerst deinen Einladungslink.',
+        noSubtitle: 'Kein Untertitel',
+        production: 'Produktion',
+        wedding: 'Hochzeit',
+        partners: 'Partner',
+      },
       accountTitle: 'Your couple dashboard',
       accountDescription: 'Only couple dashboards linked to this account appear here.',
       openDisplay: 'Open display',
@@ -225,14 +216,8 @@ export const messages = {
     },
   },
   de: {
-    app: {
-      brand: 'CoupleDash',
-      brandPrefix: 'Couple',
-      brandSuffix: 'Dash',
-    },
     nav: {
       home: 'Start',
-      admin: 'Admin',
       language: 'Sprache',
     },
     footer: {
@@ -304,16 +289,12 @@ export const messages = {
       unavailable: 'Für diese authentifizierte Session ist kein privates Dashboard verfügbar',
       supabaseRequired:
         'Supabase muss mit VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY konfiguriert sein.',
-      supabaseLoadFailed: 'Supabase load failed',
       privateSession: 'Private Display-Session',
       protectedRealtime: 'RLS-protected Realtime',
-      relationshipUptime: 'Relationship Uptime',
       since: 'Seit {date}',
       daysUntilWedding: 'Days until Wedding',
       commitmentLevel: 'Commitment-Level',
       noRollback: 'Kein Rollback konfiguriert',
-      coreMetrics: 'Dashboard',
-      personMetrics: 'Person Metrics',
       visible: '{count} sichtbar',
       milestone: '{count} Meilenstein',
       milestones: '{count} Meilensteine',
@@ -323,40 +304,27 @@ export const messages = {
         'Melde dich mit einem verknüpften Partner- oder Admin-Konto an, um dieses Display zu sehen.',
     },
     alerts: {
-      title: 'Live Alerts',
       active: '{count} aktiv',
       none: 'Keine aktiven Household Incidents.',
-      systemGenerated: 'System generated',
       triggeredBy: 'Ausgelöst von {name}',
       partnerFallback: 'Partner',
     },
     metric: {
       shared: 'Gemeinsam',
-      reserve: 'Reserve',
       updated: 'Aktualisiert {time}',
-    },
-    qr: {
-      scanToEdit: 'Scan to edit live',
     },
     theme: {
       settings: 'Theme Settings',
       primary: 'Primär',
-      neutral: 'Neutral',
-      radius: 'Radius',
-      font: 'Font',
     },
     edit: {
       console: '{name} Console',
       sharedDashboardEditor: 'Dashboard-Editor',
       sharedDashboard: 'Dashboard',
-      partnerFallback: 'Partner',
-      display: 'Display',
-      editableMetrics: 'Editable Metrics',
       editableMetricsDescription:
         'Feste Widgets, die du bearbeiten, ausblenden oder anzeigen kannst',
       sharedDashboardDescription:
         'Beide Partner können diese Widgets erstellen, bearbeiten, ausblenden, anzeigen oder löschen',
-      activeAlerts: 'Active Alerts',
       activeAlertsDescription: 'Auf dem Display sichtbar',
       addWidget: 'Widget hinzufügen',
       metricKey: 'Metric Key',
@@ -365,26 +333,8 @@ export const messages = {
       valuePlaceholder: 'Umstritten',
       explanation: 'Dashboard Explanation',
       explanationPlaceholder: 'Kurze Dashboard Explanation',
-      scope: 'Scope',
       shared: 'Gemeinsam',
       onlyMine: 'Nur meine',
-      visual: 'Visual',
-      visuals: {
-        stat: 'Stat',
-        progress: 'Progress',
-        radial: 'Radial',
-        donut: 'Donut',
-        bar: 'Bar',
-        line: 'Line',
-        memory: 'Memory',
-      },
-      tone: 'Tone',
-      tones: {
-        info: 'Info',
-        success: 'Success',
-        warning: 'Warning',
-        error: 'Error',
-      },
       triggerAlert: 'Alert auslösen',
       customAlert: 'Custom Alert',
       customAlertPlaceholder: 'braucht ein Bier 🍺',
@@ -408,7 +358,6 @@ export const messages = {
       milestoneTitle: 'Meilenstein-Titel',
       milestoneDate: 'Meilenstein-Datum',
       milestoneDescription: 'Meilenstein-Beschreibung',
-      icon: 'Icon',
       edit: 'Bearbeiten',
       delete: 'Löschen',
       cancel: 'Abbrechen',
@@ -422,11 +371,9 @@ export const messages = {
       chartDesignerDescription: 'Erstelle einen Chart. Beide Partner können ihn später bearbeiten.',
       createChart: 'Chart erstellen',
       addChartRow: 'Chart-Zeile hinzufügen',
-      chartLabel: 'Label',
       chartNewLabel: 'Neue Kategorie',
       chartCentralLabel: 'Center Label',
       chartCentralSubLabel: 'Center Subtitle',
-      alerts: 'Alerts',
       deactivate: 'Deaktivieren',
       pendingInviteTitle: 'Fehlenden Partner einladen',
       pendingInviteDescription:
