@@ -7,16 +7,15 @@ import { alertTemplates } from '@/data/defaults'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { supabase, type CoupleInviteStatus, type PendingPartnerInvite } from '@/services/supabase'
-import type { AlertSeverity, ChartDataPoint, DashboardWidget, TimelineEntry, WidgetVisual } from '@/types'
+import type {
+  AlertSeverity,
+  ChartDataPoint,
+  DashboardWidget,
+  TimelineEntry,
+  WidgetVisual,
+} from '@/types'
 
-interface AlertOption {
-  id: string
-  label: string
-  title: string
-  severity: AlertSeverity
-}
-
-interface CustomAlertTemplate {
+interface AlertTemplateDraft {
   id: string
   title: string
   severity: AlertSeverity
@@ -47,7 +46,9 @@ const pendingInvite = ref<PendingPartnerInvite | null>(null)
 const inviteError = ref<string | null>(null)
 const generatingInvite = ref(false)
 const customAlertDraft = ref('')
-const customAlertTemplates = ref<CustomAlertTemplate[]>([])
+const alertTemplateDrafts = ref<AlertTemplateDraft[]>([])
+const editingAlertTemplateId = ref<string | null>(null)
+const alertTemplateEditTitle = ref('')
 type ChartVisual = Extract<WidgetVisual, 'donut' | 'bar' | 'line'>
 const chartVisuals: ChartVisual[] = ['donut', 'bar', 'line']
 const chartDraft = reactive({
@@ -113,8 +114,8 @@ const toneOptions = computed(() =>
 const chartVisualOptions = computed(() =>
   chartVisuals.map((value) => ({ label: t(`edit.visuals.${value}`), value })),
 )
-const customAlertStorageKey = computed(() => `couple-dash-custom-alerts:${coupleSlug.value}`)
-const alertTemplateOptions = computed<AlertOption[]>(() =>
+const alertTemplateStorageKey = computed(() => `couple-dash-alert-templates:${coupleSlug.value}`)
+const seededAlertTemplates = computed<AlertTemplateDraft[]>(() =>
   alertTemplates.map((template) => {
     const templatePartner =
       couple.value?.partners.find(
@@ -125,30 +126,14 @@ const alertTemplateOptions = computed<AlertOption[]>(() =>
 
     return {
       id: template.id,
-      label: title,
       title,
       severity: template.severity,
     }
   }),
 )
-const customAlertOptions = computed<AlertOption[]>(() =>
-  customAlertTemplates.value.map((template) => ({
-    id: template.id,
-    label: template.title,
-    title: template.title,
-    severity: template.severity,
-  })),
-)
-const alertTemplateCount = computed(
-  () => alertTemplateOptions.value.length + customAlertOptions.value.length,
-)
-const editAccordionDefaultValue = ['trigger-alert', 'relationship-timeline', 'live-metrics']
+const alertTemplateCount = computed(() => alertTemplateDrafts.value.length)
+const editAccordionDefaultValue = ['alerts', 'relationship-timeline', 'live-metrics']
 const editAccordionItems = computed(() => [
-  {
-    label: `${t('edit.triggerAlert')} (${alertTemplateCount.value})`,
-    icon: 'i-lucide-bell-ring',
-    value: 'trigger-alert',
-  },
   ...(editableTimelineWidgets.value.length
     ? [
         {
@@ -164,7 +149,7 @@ const editAccordionItems = computed(() => [
     value: 'live-metrics',
   },
   {
-    label: `${t('edit.alerts')} (${alerts.value.length})`,
+    label: `${t('edit.alerts')} (${alerts.value.length}/${alertTemplateCount.value})`,
     icon: 'i-lucide-message-circle-warning',
     value: 'alerts',
   },
@@ -349,20 +334,21 @@ async function saveTimelineWidget(widget: DashboardWidget) {
   })
 }
 
-function loadCustomAlertTemplates() {
+function loadAlertTemplates() {
   if (typeof localStorage === 'undefined') {
+    alertTemplateDrafts.value = seededAlertTemplates.value
     return
   }
 
-  const stored = localStorage.getItem(customAlertStorageKey.value)
+  const stored = localStorage.getItem(alertTemplateStorageKey.value)
   if (!stored) {
-    customAlertTemplates.value = []
+    alertTemplateDrafts.value = seededAlertTemplates.value
     return
   }
 
   try {
-    const parsed = JSON.parse(stored) as Partial<CustomAlertTemplate>[]
-    customAlertTemplates.value = parsed
+    const parsed = JSON.parse(stored) as Partial<AlertTemplateDraft>[]
+    alertTemplateDrafts.value = parsed
       .filter((item) => item.id && item.title)
       .map((item) => ({
         id: String(item.id),
@@ -372,16 +358,16 @@ function loadCustomAlertTemplates() {
           : 'info',
       }))
   } catch {
-    customAlertTemplates.value = []
+    alertTemplateDrafts.value = seededAlertTemplates.value
   }
 }
 
-function persistCustomAlertTemplates() {
+function persistAlertTemplates() {
   if (typeof localStorage === 'undefined') {
     return
   }
 
-  localStorage.setItem(customAlertStorageKey.value, JSON.stringify(customAlertTemplates.value))
+  localStorage.setItem(alertTemplateStorageKey.value, JSON.stringify(alertTemplateDrafts.value))
 }
 
 function customAlertTitle(text: string) {
@@ -403,32 +389,69 @@ function addCustomAlertTemplate() {
     return
   }
 
-  const exists = customAlertTemplates.value.some(
+  const exists = alertTemplateDrafts.value.some(
     (template) => template.title.toLowerCase() === title.toLowerCase(),
   )
   if (!exists) {
-    customAlertTemplates.value = [
-      ...customAlertTemplates.value,
+    alertTemplateDrafts.value = [
+      ...alertTemplateDrafts.value,
       {
         id: crypto.randomUUID(),
         title,
         severity: 'info',
       },
     ]
-    persistCustomAlertTemplates()
+    persistAlertTemplates()
   }
 
   customAlertDraft.value = ''
 }
 
-function removeCustomAlertTemplate(templateId: string) {
-  customAlertTemplates.value = customAlertTemplates.value.filter(
-    (template) => template.id !== templateId,
-  )
-  persistCustomAlertTemplates()
+async function removeAlertTemplate(template: AlertTemplateDraft) {
+  const activeAlert = activeAlertForTitle(template.title)
+  if (activeAlert) {
+    await setAlertActive(activeAlert.id, false)
+  }
+
+  alertTemplateDrafts.value = alertTemplateDrafts.value.filter((item) => item.id !== template.id)
+  if (editingAlertTemplateId.value === template.id) {
+    editingAlertTemplateId.value = null
+    alertTemplateEditTitle.value = ''
+  }
+  persistAlertTemplates()
 }
 
-async function sendAlert(alert: Pick<AlertOption, 'title' | 'severity'>) {
+function editAlertTemplate(template: AlertTemplateDraft) {
+  editingAlertTemplateId.value = template.id
+  alertTemplateEditTitle.value = template.title
+}
+
+function cancelAlertTemplateEdit() {
+  editingAlertTemplateId.value = null
+  alertTemplateEditTitle.value = ''
+}
+
+async function saveAlertTemplate(template: AlertTemplateDraft) {
+  const previousTitle = template.title
+  const title = customAlertTitle(alertTemplateEditTitle.value)
+  if (!title) {
+    await removeAlertTemplate(template)
+    return
+  }
+
+  const activeAlert = activeAlertForTitle(previousTitle)
+  template.title = title
+  persistAlertTemplates()
+
+  if (activeAlert && previousTitle !== title) {
+    await setAlertActive(activeAlert.id, false)
+    await sendAlert(template)
+  }
+
+  cancelAlertTemplateEdit()
+}
+
+async function sendAlert(alert: Pick<AlertTemplateDraft, 'title' | 'severity'>) {
   if (!couple.value) {
     return
   }
@@ -441,6 +464,33 @@ async function sendAlert(alert: Pick<AlertOption, 'title' | 'severity'>) {
     source: 'partner',
     triggeredBy: partner.value?.name,
   })
+}
+
+function activeAlertForTitle(title: string) {
+  return alerts.value.find((alert) => alert.title === title)
+}
+
+async function toggleAlert(alert: Pick<AlertTemplateDraft, 'title' | 'severity'>) {
+  const activeAlert = activeAlertForTitle(alert.title)
+
+  if (activeAlert) {
+    await setAlertActive(activeAlert.id, false)
+    return
+  }
+
+  await sendAlert(alert)
+}
+
+function alertButtonColor(alert: Pick<AlertTemplateDraft, 'title' | 'severity'>) {
+  return activeAlertForTitle(alert.title) ? alert.severity : 'neutral'
+}
+
+function alertButtonVariant(alert: Pick<AlertTemplateDraft, 'title'>) {
+  return activeAlertForTitle(alert.title) ? 'soft' : 'ghost'
+}
+
+function alertButtonIcon(alert: Pick<AlertTemplateDraft, 'title'>) {
+  return activeAlertForTitle(alert.title) ? 'i-lucide-toggle-right' : 'i-lucide-toggle-left'
 }
 
 async function createPartnerInvite() {
@@ -478,11 +528,10 @@ async function copyPendingInvite() {
 }
 
 watch(userId, () => void loadPrivateEditor())
-watch(coupleSlug, loadCustomAlertTemplates)
+watch(coupleSlug, loadAlertTemplates)
 
 onMounted(() => {
-  loadCustomAlertTemplates()
-  void loadPrivateEditor()
+  void loadPrivateEditor().then(loadAlertTemplates)
 })
 </script>
 
@@ -566,10 +615,12 @@ onMounted(() => {
       <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-4' }">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <div class="text-sm text-muted">{{ t('edit.activeAlerts') }}</div>
-            <div class="text-sm text-muted">{{ t('edit.activeAlertsDescription') }}</div>
+            <div class="text-sm text-muted">{{ t('edit.alerts') }}</div>
+            <div class="text-sm text-muted">{{ t('edit.customAlert') }}</div>
           </div>
-          <div class="text-3xl font-black leading-none text-amber-500">{{ alerts.length }}</div>
+          <div class="text-3xl font-black leading-none text-amber-500">
+            {{ alertTemplateCount }}
+          </div>
         </div>
       </UCard>
     </div>
@@ -582,57 +633,7 @@ onMounted(() => {
       class="rounded-xl border border-default px-4"
     >
       <template #body="{ item }">
-        <section v-if="item.value === 'trigger-alert'" class="space-y-4">
-          <div class="grid gap-2 sm:grid-cols-2">
-            <UButton
-              v-for="template in alertTemplateOptions"
-              :key="template.id"
-              class="justify-start text-left"
-              :label="template.label"
-              variant="outline"
-              type="button"
-              @click="sendAlert(template)"
-            />
-          </div>
-
-          <form
-            class="grid gap-3 rounded-xl border border-default p-3"
-            @submit.prevent="addCustomAlertTemplate"
-          >
-            <UFormField :label="t('edit.customAlert')">
-              <UInput
-                v-model="customAlertDraft"
-                class="w-full"
-                :placeholder="t('edit.customAlertPlaceholder')"
-              />
-            </UFormField>
-            <div class="flex flex-wrap justify-end gap-2">
-              <UButton :label="t('edit.saveCustomAlert')" icon="i-lucide-plus" type="submit" />
-            </div>
-          </form>
-
-          <div v-if="customAlertOptions.length" class="grid gap-2 sm:grid-cols-2">
-            <div v-for="template in customAlertOptions" :key="template.id" class="flex gap-2">
-              <UButton
-                class="min-w-0 flex-1 justify-start text-left"
-                :label="template.label"
-                variant="soft"
-                type="button"
-                @click="sendAlert(template)"
-              />
-              <UButton
-                :aria-label="t('edit.delete')"
-                color="neutral"
-                icon="i-lucide-trash-2"
-                variant="ghost"
-                type="button"
-                @click="removeCustomAlertTemplate(template.id)"
-              />
-            </div>
-          </div>
-        </section>
-
-        <section v-else-if="item.value === 'relationship-timeline'" class="space-y-3">
+        <section v-if="item.value === 'relationship-timeline'" class="space-y-3">
           <UCard
             v-for="widget in editableTimelineWidgets"
             :key="widget.id"
@@ -915,23 +916,91 @@ onMounted(() => {
         </section>
 
         <section v-else class="space-y-3">
-          <UAlert
-            v-for="alert in alerts"
-            :key="alert.id"
-            color="info"
-            variant="outline"
-            :description="alert.title"
+          <div class="grid gap-2 lg:grid-cols-2">
+            <div
+              v-for="template in alertTemplateDrafts"
+              :key="template.id"
+              class="grid min-h-10 grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-default bg-muted/40 p-2"
+            >
+              <template v-if="editingAlertTemplateId === template.id">
+                <UInput
+                  v-model="alertTemplateEditTitle"
+                  :aria-label="t('edit.customAlert')"
+                  class="min-w-0"
+                  size="sm"
+                  @keyup.enter="saveAlertTemplate(template)"
+                  @keyup.esc="cancelAlertTemplateEdit"
+                />
+                <div class="flex gap-1">
+                  <UButton
+                    :aria-label="t('edit.save')"
+                    color="neutral"
+                    icon="i-lucide-check"
+                    size="sm"
+                    variant="ghost"
+                    type="button"
+                    @click="saveAlertTemplate(template)"
+                  />
+                  <UButton
+                    :aria-label="t('edit.cancel')"
+                    color="neutral"
+                    icon="i-lucide-x"
+                    size="sm"
+                    variant="ghost"
+                    type="button"
+                    @click="cancelAlertTemplateEdit"
+                  />
+                  <UButton
+                    :aria-label="t('edit.delete')"
+                    color="neutral"
+                    icon="i-lucide-trash-2"
+                    size="sm"
+                    variant="ghost"
+                    type="button"
+                    @click="removeAlertTemplate(template)"
+                  />
+                </div>
+              </template>
+              <template v-else>
+                <UButton
+                  class="min-w-0 justify-start text-left"
+                  :color="alertButtonColor(template)"
+                  :icon="alertButtonIcon(template)"
+                  :label="template.title"
+                  :variant="alertButtonVariant(template)"
+                  type="button"
+                  @click="toggleAlert(template)"
+                />
+                <UButton
+                  :aria-label="t('edit.edit')"
+                  color="neutral"
+                  icon="i-lucide-pencil"
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  @click="editAlertTemplate(template)"
+                />
+              </template>
+            </div>
+          </div>
+
+          <form
+            class="grid gap-2 rounded-md border border-default bg-muted/40 p-2 sm:grid-cols-[1fr_auto]"
+            @submit.prevent="addCustomAlertTemplate"
           >
-            <template #actions>
-              <UButton
-                :label="t('edit.deactivate')"
-                size="sm"
-                variant="ghost"
-                type="button"
-                @click="setAlertActive(alert.id, false)"
-              />
-            </template>
-          </UAlert>
+            <UInput
+              v-model="customAlertDraft"
+              :aria-label="t('edit.customAlert')"
+              class="w-full"
+              :placeholder="t('edit.customAlertPlaceholder')"
+            />
+            <UButton
+              class="justify-center"
+              :label="t('edit.saveCustomAlert')"
+              icon="i-lucide-plus"
+              type="submit"
+            />
+          </form>
         </section>
       </template>
     </UAccordion>

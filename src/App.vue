@@ -61,8 +61,7 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
   <UApp :locale="uiLocale">
     <UHeader :title="t('app.brand')" to="/" :toggle="{ color: 'neutral', variant: 'ghost' }">
       <template #title>
-        <span class="text-primary">{{ t('app.brandPrefix') }}</span>
-        <span>{{ t('app.brandSuffix') }}</span>
+        <span>{{ t('app.brandPrefix') }}<span class="text-primary">{{ t('app.brandSuffix') }}</span></span>
       </template>
 
       <UNavigationMenu :items="items" />

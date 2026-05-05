@@ -9,8 +9,8 @@ export const messages = {
   en: {
     app: {
       brand: 'CoupleDash',
-      brandPrefix: 'CoupleDash',
-      brandSuffix: '',
+      brandPrefix: 'Couple',
+      brandSuffix: 'Dash',
     },
     nav: {
       home: 'Home',
@@ -182,7 +182,9 @@ export const messages = {
       milestoneDate: 'Milestone date',
       milestoneDescription: 'Milestone description',
       icon: 'Icon',
+      edit: 'Edit',
       delete: 'Delete',
+      cancel: 'Cancel',
       hide: 'Hide',
       show: 'Show',
       visible: 'visible',
@@ -221,8 +223,8 @@ export const messages = {
   de: {
     app: {
       brand: 'CoupleDash',
-      brandPrefix: 'CoupleDash',
-      brandSuffix: '',
+      brandPrefix: 'Couple',
+      brandSuffix: 'Dash',
     },
     nav: {
       home: 'Start',
@@ -399,7 +401,9 @@ export const messages = {
       milestoneDate: 'Meilenstein-Datum',
       milestoneDescription: 'Meilenstein-Beschreibung',
       icon: 'Icon',
+      edit: 'Bearbeiten',
       delete: 'Löschen',
+      cancel: 'Abbrechen',
       hide: 'Ausblenden',
       show: 'Anzeigen',
       visible: 'sichtbar',
