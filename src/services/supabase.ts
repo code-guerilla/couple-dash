@@ -10,7 +10,6 @@ export interface AdminTenantRow {
   subtitle: string
   relationship_start: string
   wedding_date: string
-  anniversary_date: string
   partner_count: number | string
   accepted_partner_count: number | string
   widget_count: number | string
@@ -43,7 +42,6 @@ export interface AdminTenantDetail {
   subtitle: string
   relationship_start: string
   wedding_date: string
-  anniversary_date: string
   partners: AdminTenantPartner[]
 }
 
@@ -54,7 +52,6 @@ export interface MyCoupleRow {
   subtitle: string
   relationship_start: string
   wedding_date: string
-  anniversary_date: string
   partner_count: number | string
   accepted_partner_count: number | string
 }

@@ -13,7 +13,6 @@ create table if not exists public.couple (
   subtitle text not null default '',
   relationship_start date not null,
   wedding_date date not null,
-  anniversary_date date not null,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
@@ -47,8 +46,6 @@ create table if not exists public.dashboard_widget (
   value text not null,
   unit text,
   detail text not null default '',
-  scope text not null check (scope in ('shared', 'person')),
-  person_id uuid references public.partner(id) on delete cascade,
   visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline')),
   sort_order integer not null default 0,
   min_value numeric,
@@ -59,12 +56,7 @@ create table if not exists public.dashboard_widget (
   timeline_entries jsonb not null default '[]'::jsonb,
   chart_data jsonb not null default '[]'::jsonb,
   chart_options jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now(),
-  constraint dashboard_widget_scope_person_check check (
-    (scope = 'shared' and person_id is null)
-    or
-    (scope = 'person' and person_id is not null)
-  )
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.couple_alert (
@@ -75,20 +67,75 @@ create table if not exists public.couple_alert (
   severity text not null default 'info' check (severity in ('info', 'success', 'warning', 'error')),
   source text not null default 'system' check (source in ('system', 'partner')),
   active boolean not null default true,
+  triggered_by_partner_id uuid references public.partner(id) on delete set null,
   triggered_by text,
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day')
 );
 
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
+alter table public.couple drop column if exists anniversary_date;
 alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
 alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
 alter table public.dashboard_widget add column if not exists chart_data jsonb not null default '[]'::jsonb;
 alter table public.dashboard_widget add column if not exists chart_options jsonb not null default '{}'::jsonb;
+alter table public.couple_alert add column if not exists triggered_by_partner_id uuid references public.partner(id) on delete set null;
 alter table public.couple_alert add column if not exists expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day');
 alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
+alter table public.dashboard_widget drop constraint if exists dashboard_widget_scope_person_check;
+drop policy if exists "Members update shared widgets" on public.dashboard_widget;
+drop policy if exists "Members update own person widgets" on public.dashboard_widget;
+drop policy if exists "Members manage shared dashboard widgets" on public.dashboard_widget;
+drop trigger if exists validate_dashboard_widget_person_trigger on public.dashboard_widget;
+drop function if exists public.validate_dashboard_widget_person();
+drop function if exists public.is_current_partner_for_widget(uuid, uuid);
+drop index if exists dashboard_widget_person_id_idx;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'dashboard_widget'
+      and column_name = 'scope'
+  ) then
+    execute 'update public.dashboard_widget set scope = ''shared'', person_id = null where scope is distinct from ''shared'' or person_id is not null';
+  end if;
+end $$;
+
+with resolved_alert_partner as (
+  select
+    alert.id as alert_id,
+    partner.id as partner_id,
+    partner.name as partner_name
+  from public.couple_alert alert
+  join lateral (
+    select candidate.id, candidate.name
+    from public.partner candidate
+    where candidate.couple_id = alert.couple_id
+    order by
+      case
+        when alert.triggered_by is not null
+          and lower(trim(candidate.name)) = lower(trim(alert.triggered_by)) then 0
+        else 1
+      end,
+      candidate.created_at
+    limit 1
+  ) partner on true
+  where alert.source = 'partner'
+    and alert.triggered_by_partner_id is null
+)
+update public.couple_alert alert
+set triggered_by_partner_id = resolved_alert_partner.partner_id,
+    triggered_by = coalesce(nullif(alert.triggered_by, ''), resolved_alert_partner.partner_name)
+from resolved_alert_partner
+where alert.id = resolved_alert_partner.alert_id;
+
+alter table public.dashboard_widget drop column if exists person_id;
+alter table public.dashboard_widget drop column if exists scope;
 
 do $$
 begin
@@ -122,33 +169,16 @@ alter table public.dashboard_widget
   add constraint dashboard_widget_visual_check
   check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline'));
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'dashboard_widget_scope_person_check'
-      and conrelid = 'public.dashboard_widget'::regclass
-  ) then
-    alter table public.dashboard_widget
-      add constraint dashboard_widget_scope_person_check
-      check (
-        (scope = 'shared' and person_id is null)
-        or
-        (scope = 'person' and person_id is not null)
-      );
-  end if;
-end $$;
-
 create index if not exists couple_slug_idx on public.couple (slug);
 create index if not exists partner_couple_id_idx on public.partner (couple_id);
 create index if not exists partner_user_id_idx on public.partner (user_id);
 create index if not exists couple_member_user_id_idx on public.couple_member (user_id);
 create index if not exists couple_member_couple_id_idx on public.couple_member (couple_id);
 create index if not exists dashboard_widget_couple_sort_idx on public.dashboard_widget (couple_id, sort_order);
-create index if not exists dashboard_widget_person_id_idx on public.dashboard_widget (person_id);
 create index if not exists couple_alert_couple_active_created_idx
   on public.couple_alert (couple_id, active, created_at desc);
+create index if not exists couple_alert_triggered_by_partner_id_idx
+  on public.couple_alert (triggered_by_partner_id);
 
 create or replace function public.is_app_admin()
 returns boolean
@@ -183,62 +213,6 @@ as '
       )
     );
 ';
-
-create or replace function public.is_current_partner_for_widget(p_couple_id uuid, p_person_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as '
-  select auth.uid() is not null
-    and exists (
-      select 1
-      from public.couple_member member
-      where member.couple_id = p_couple_id
-        and member.user_id = auth.uid()
-        and member.partner_id = p_person_id
-    );
-';
-
-create or replace function public.validate_dashboard_widget_person()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  partner_couple_id uuid;
-begin
-  if new.scope = 'shared' and new.person_id is not null then
-    raise exception 'Shared widgets cannot have person_id';
-  end if;
-
-  if new.scope = 'person' and new.person_id is null then
-    raise exception 'Person widgets require person_id';
-  end if;
-
-  if new.person_id is not null then
-    select partner.couple_id
-      into partner_couple_id
-    from public.partner partner
-    where partner.id = new.person_id;
-
-    if partner_couple_id is null or partner_couple_id <> new.couple_id then
-      raise exception 'Widget person_id must reference a partner from the same couple';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists validate_dashboard_widget_person_trigger on public.dashboard_widget;
-create trigger validate_dashboard_widget_person_trigger
-before insert or update of couple_id, scope, person_id
-on public.dashboard_widget
-for each row
-execute function public.validate_dashboard_widget_person();
 
 create or replace function public.accept_partner_invite(
   p_slug text,
@@ -290,6 +264,12 @@ begin
 end;
 $$;
 
+drop function if exists public.list_my_couples();
+drop function if exists public.admin_list_tenants();
+drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text);
+drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text);
+drop function if exists public.admin_get_tenant(uuid);
+
 create or replace function public.list_my_couples()
 returns table (
   couple_id uuid,
@@ -298,7 +278,6 @@ returns table (
   subtitle text,
   relationship_start date,
   wedding_date date,
-  anniversary_date date,
   partner_count bigint,
   accepted_partner_count bigint
 )
@@ -314,7 +293,6 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
-    couple.anniversary_date,
     count(distinct partner.id) as partner_count,
     count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count
   from public.couple_member member
@@ -405,7 +383,6 @@ returns table (
   subtitle text,
   relationship_start date,
   wedding_date date,
-  anniversary_date date,
   partner_count bigint,
   accepted_partner_count bigint,
   widget_count bigint,
@@ -424,7 +401,6 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
-    couple.anniversary_date,
     count(distinct partner.id) as partner_count,
     count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count,
     count(distinct widget.id) as widget_count,
@@ -445,7 +421,6 @@ create or replace function public.admin_create_tenant(
   p_subtitle text,
   p_relationship_start date,
   p_wedding_date date,
-  p_anniversary_date date,
   p_partner_a_name text,
   p_partner_a_slug text,
   p_partner_b_name text,
@@ -498,7 +473,6 @@ begin
     subtitle,
     relationship_start,
     wedding_date,
-    anniversary_date,
     created_by
   ) values (
     normalized_slug,
@@ -506,7 +480,6 @@ begin
     coalesce(trim(p_subtitle), ''),
     p_relationship_start,
     p_wedding_date,
-    p_anniversary_date,
     auth.uid()
   )
   returning id into new_couple_id;
@@ -538,8 +511,6 @@ begin
     label,
     value,
     detail,
-    scope,
-    person_id,
     visual,
     sort_order,
     max_value,
@@ -552,10 +523,8 @@ begin
     (
       new_couple_id,
       'Our Timeline',
-      '6 milestones',
+      '2 milestones',
       'The relationship milestones that make the dashboard personal.',
-      'shared',
-      null,
       'timeline',
       1,
       null,
@@ -563,21 +532,15 @@ begin
       'success',
       jsonb_build_array(
         jsonb_build_object('id', 'first-met', 'date', p_relationship_start, 'title', 'First Met', 'description', 'The first chapter of the story.', 'icon', 'i-lucide-sparkles'),
-        jsonb_build_object('id', 'official-couple', 'date', p_anniversary_date, 'title', 'Officially a Couple', 'description', 'The anniversary date that anchors the dashboard.', 'icon', 'i-lucide-badge-check'),
-        jsonb_build_object('id', 'moved-together', 'date', p_anniversary_date, 'title', 'Moved Together', 'description', 'One place, two routines, shared keys.', 'icon', 'i-lucide-home'),
-        jsonb_build_object('id', 'fur-baby', 'date', p_anniversary_date, 'title', 'Fur-Baby Date', 'description', 'The day the household got cuter.', 'icon', 'i-lucide-paw-print'),
-        jsonb_build_object('id', 'engagement', 'date', p_anniversary_date, 'title', 'The Engagement', 'description', 'A yes worth keeping visible.', 'icon', 'i-lucide-gem'),
         jsonb_build_object('id', 'wedding', 'date', p_wedding_date, 'title', 'The Wedding', 'description', 'The big day on the shared calendar.', 'icon', 'i-lucide-church')
       ),
       '[]'::jsonb,
       '{}'::jsonb
     ),
-    (new_couple_id, 'Woraus die Beziehung besteht', '100%', 'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.', 'shared', null, 'donut', 2, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Liebe', 'value', 40), jsonb_build_object('label', 'Kaffee', 'value', 20), jsonb_build_object('label', 'Diskussionen über Essen', 'value', 25), jsonb_build_object('label', 'Gemeinsame Serien', 'value', 15)), jsonb_build_object('centralLabel', 'Beziehungs-Mix', 'centralSubLabel', 'wissenschaftlich fragwürdig')),
-    (new_couple_id, 'Gewonnene Diskussionen', '75%', 'Beide tun so, als hätten sie gewonnen.', 'shared', null, 'donut', 3, null, null, 'warning', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Partner A', 'value', 12), jsonb_build_object('label', 'Partner B', 'value', 13), jsonb_build_object('label', 'Beide gewonnen', 'value', 75)), jsonb_build_object('centralLabel', '75%', 'centralSubLabel', 'diplomatischer Sieg')),
-    (new_couple_id, 'Top Beziehungsthemen', '87', 'Ranking der wichtigsten Haushaltskonferenzen.', 'shared', null, 'bar', 4, null, null, 'info', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Was essen wir?', 'value', 87), jsonb_build_object('label', 'Wo sind die Schlüssel?', 'value', 42), jsonb_build_object('label', 'Noch eine Folge?', 'value', 64)), '{}'::jsonb),
-    (new_couple_id, 'Romantik im Zeitverlauf', '100', 'Fake Trend, echte Gefühle.', 'shared', null, 'line', 5, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Kennenlernen', 'value', 80), jsonb_build_object('label', 'Erster Urlaub', 'value', 95), jsonb_build_object('label', 'Umzug', 'value', 62), jsonb_build_object('label', 'Hochzeit', 'value', 100)), '{}'::jsonb),
-    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 6, null, null, 'info', '[]'::jsonb, '[]'::jsonb, '{}'::jsonb),
-    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 7, null, null, 'info', '[]'::jsonb, '[]'::jsonb, '{}'::jsonb);
+    (new_couple_id, 'Woraus die Beziehung besteht', '100%', 'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.', 'donut', 2, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Liebe', 'value', 40), jsonb_build_object('label', 'Kaffee', 'value', 20), jsonb_build_object('label', 'Diskussionen über Essen', 'value', 25), jsonb_build_object('label', 'Gemeinsame Serien', 'value', 15)), jsonb_build_object('centralLabel', 'Beziehungs-Mix', 'centralSubLabel', 'wissenschaftlich fragwürdig')),
+    (new_couple_id, 'Gewonnene Diskussionen', '75%', 'Beide tun so, als hätten sie gewonnen.', 'donut', 3, null, null, 'warning', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Partner A', 'value', 12), jsonb_build_object('label', 'Partner B', 'value', 13), jsonb_build_object('label', 'Beide gewonnen', 'value', 75)), jsonb_build_object('centralLabel', '75%', 'centralSubLabel', 'diplomatischer Sieg')),
+    (new_couple_id, 'Top Beziehungsthemen', '87', 'Ranking der wichtigsten Haushaltskonferenzen.', 'bar', 4, null, null, 'info', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Was essen wir?', 'value', 87), jsonb_build_object('label', 'Wo sind die Schlüssel?', 'value', 42), jsonb_build_object('label', 'Noch eine Folge?', 'value', 64)), '{}'::jsonb),
+    (new_couple_id, 'Romantik im Zeitverlauf', '100', 'Fake Trend, echte Gefühle.', 'line', 5, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Kennenlernen', 'value', 80), jsonb_build_object('label', 'Erster Urlaub', 'value', 95), jsonb_build_object('label', 'Umzug', 'value', 62), jsonb_build_object('label', 'Hochzeit', 'value', 100)), '{}'::jsonb);
 
   insert into public.couple_alert (couple_id, title, detail, severity, source)
   values (
@@ -606,7 +569,6 @@ returns table (
   subtitle text,
   relationship_start date,
   wedding_date date,
-  anniversary_date date,
   partners jsonb
 )
 language sql
@@ -621,7 +583,6 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
-    couple.anniversary_date,
     coalesce(
       jsonb_agg(
         jsonb_build_object(
@@ -650,7 +611,6 @@ create or replace function public.admin_update_tenant(
   p_subtitle text,
   p_relationship_start date,
   p_wedding_date date,
-  p_anniversary_date date,
   p_partner_a_id uuid,
   p_partner_a_name text,
   p_partner_a_slug text,
@@ -692,8 +652,7 @@ begin
         name = trim(p_name),
         subtitle = coalesce(trim(p_subtitle), ''),
         relationship_start = p_relationship_start,
-        wedding_date = p_wedding_date,
-        anniversary_date = p_anniversary_date
+        wedding_date = p_wedding_date
   where id = p_couple_id;
 
   if not found then
@@ -806,6 +765,10 @@ $$;
 
 drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb);
 drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb);
+drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text);
+drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
+drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
+drop function if exists public.delete_dashboard_widget(uuid);
 
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
@@ -836,14 +799,8 @@ begin
     raise exception 'Widget not found';
   end if;
 
-  if not public.is_app_admin() then
-    if target_widget.scope = 'shared' then
-      if not public.is_couple_member(target_widget.couple_id) then
-        raise exception 'Not allowed';
-      end if;
-    elsif not public.is_current_partner_for_widget(target_widget.couple_id, target_widget.person_id) then
-      raise exception 'Not allowed';
-    end if;
+  if not public.is_app_admin() and not public.is_couple_member(target_widget.couple_id) then
+    raise exception 'Not allowed';
   end if;
 
   update public.dashboard_widget
@@ -862,17 +819,12 @@ begin
 end;
 $$;
 
-drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text);
-drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
-
 create or replace function public.add_dashboard_widget(
   p_couple_id uuid,
   p_label text,
   p_value text default '',
   p_unit text default null,
   p_detail text default '',
-  p_scope text default 'shared',
-  p_person_id uuid default null,
   p_visual text default 'stat',
   p_sort_order integer default 0,
   p_min_value numeric default null,
@@ -890,18 +842,8 @@ as $$
 declare
   new_id uuid;
 begin
-  if not public.is_app_admin() then
-    if p_scope = 'shared' then
-      if p_person_id is not null or not public.is_couple_member(p_couple_id) then
-        raise exception 'Not allowed';
-      end if;
-    elsif p_scope = 'person' then
-      if p_person_id is null or not public.is_current_partner_for_widget(p_couple_id, p_person_id) then
-        raise exception 'Not allowed';
-      end if;
-    else
-      raise exception 'Invalid scope';
-    end if;
+  if not public.is_app_admin() and not public.is_couple_member(p_couple_id) then
+    raise exception 'Not allowed';
   end if;
 
   insert into public.dashboard_widget (
@@ -910,8 +852,6 @@ begin
     value,
     unit,
     detail,
-    scope,
-    person_id,
     visual,
     sort_order,
     min_value,
@@ -927,8 +867,6 @@ begin
     p_value,
     p_unit,
     coalesce(p_detail, ''),
-    p_scope,
-    p_person_id,
     coalesce(p_visual, 'stat'),
     coalesce(p_sort_order, 0),
     p_min_value,
@@ -942,6 +880,33 @@ begin
   returning id into new_id;
 
   return new_id;
+end;
+$$;
+
+create or replace function public.delete_dashboard_widget(p_widget_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_widget public.dashboard_widget%rowtype;
+begin
+  select *
+    into target_widget
+  from public.dashboard_widget widget
+  where widget.id = p_widget_id;
+
+  if target_widget.id is null then
+    raise exception 'Widget not found';
+  end if;
+
+  if not public.is_app_admin() and not public.is_couple_member(target_widget.couple_id) then
+    raise exception 'Not allowed';
+  end if;
+
+  delete from public.dashboard_widget
+  where id = p_widget_id;
 end;
 $$;
 
@@ -963,14 +928,8 @@ begin
     raise exception 'Widget not found';
   end if;
 
-  if not public.is_app_admin() then
-    if target_widget.scope = 'shared' then
-      if not public.is_couple_member(target_widget.couple_id) then
-        raise exception 'Not allowed';
-      end if;
-    elsif not public.is_current_partner_for_widget(target_widget.couple_id, target_widget.person_id) then
-      raise exception 'Not allowed';
-    end if;
+  if not public.is_app_admin() and not public.is_couple_member(target_widget.couple_id) then
+    raise exception 'Not allowed';
   end if;
 
   update public.dashboard_widget
@@ -988,6 +947,7 @@ set search_path = ''
 as $$
 declare
   target_alert public.couple_alert%rowtype;
+  current_partner_id uuid;
 begin
   select *
     into target_alert
@@ -998,7 +958,21 @@ begin
     raise exception 'Alert not found';
   end if;
 
-  if not public.is_app_admin() and not public.is_couple_member(target_alert.couple_id) then
+  if public.is_app_admin() then
+    update public.couple_alert
+      set active = p_active
+    where id = p_alert_id;
+    return;
+  end if;
+
+  select member.partner_id
+    into current_partner_id
+  from public.couple_member member
+  where member.couple_id = target_alert.couple_id
+    and member.user_id = auth.uid();
+
+  if target_alert.source <> 'partner'
+    or target_alert.triggered_by_partner_id is distinct from current_partner_id then
     raise exception 'Not allowed';
   end if;
 
@@ -1009,6 +983,8 @@ end;
 $$;
 
 drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text);
+drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz);
+drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz, uuid);
 
 create or replace function public.trigger_couple_alert(
   p_couple_id uuid,
@@ -1017,7 +993,8 @@ create or replace function public.trigger_couple_alert(
   p_severity text,
   p_source text default 'partner',
   p_triggered_by text default null,
-  p_expires_at timestamptz default null
+  p_expires_at timestamptz default null,
+  p_triggered_by_partner_id uuid default null
 ) returns uuid
 language plpgsql
 security definer
@@ -1026,23 +1003,51 @@ as $$
 declare
   new_id uuid;
   next_source text := coalesce(p_source, 'partner');
+  current_partner_id uuid;
+  current_partner_name text;
 begin
-  if public.is_app_admin() then
+  if public.is_app_admin() and next_source = 'system' then
     next_source := coalesce(p_source, 'system');
-  elsif public.is_couple_member(p_couple_id) and next_source = 'partner' then
+  elsif next_source = 'partner' then
+    select member.partner_id, partner.name
+      into current_partner_id, current_partner_name
+    from public.couple_member member
+    left join public.partner partner on partner.id = member.partner_id
+    where member.couple_id = p_couple_id
+      and member.user_id = auth.uid();
+
+    if current_partner_id is null
+      or (p_triggered_by_partner_id is not null and p_triggered_by_partner_id <> current_partner_id) then
+      raise exception 'Not allowed';
+    end if;
+
     next_source := 'partner';
   else
     raise exception 'Not allowed';
   end if;
 
-  insert into public.couple_alert (couple_id, title, detail, severity, source, triggered_by, expires_at)
+  if next_source not in ('system', 'partner') then
+    raise exception 'Invalid alert source';
+  end if;
+
+  insert into public.couple_alert (
+    couple_id,
+    title,
+    detail,
+    severity,
+    source,
+    triggered_by_partner_id,
+    triggered_by,
+    expires_at
+  )
   values (
     p_couple_id,
     p_title,
     coalesce(p_detail, ''),
     coalesce(p_severity, 'info'),
     next_source,
-    p_triggered_by,
+    case when next_source = 'partner' then current_partner_id else null end,
+    case when next_source = 'partner' then coalesce(p_triggered_by, current_partner_name) else null end,
     coalesce(p_expires_at, date_trunc('day', now()) + interval '1 day')
   )
   returning id into new_id;
@@ -1073,6 +1078,7 @@ drop policy if exists "App admin manage couple_member" on public.couple_member;
 drop policy if exists "Widgets are visible to members" on public.dashboard_widget;
 drop policy if exists "Members update shared widgets" on public.dashboard_widget;
 drop policy if exists "Members update own person widgets" on public.dashboard_widget;
+drop policy if exists "Members manage shared dashboard widgets" on public.dashboard_widget;
 drop policy if exists "App admins manage widgets" on public.dashboard_widget;
 drop policy if exists "Alerts are visible to members" on public.couple_alert;
 drop policy if exists "Members create partner alerts" on public.couple_alert;
@@ -1127,33 +1133,11 @@ on public.dashboard_widget for select
 to authenticated
 using (public.is_couple_member(couple_id));
 
-create policy "Members update shared widgets"
-on public.dashboard_widget for update
+create policy "Members manage shared dashboard widgets"
+on public.dashboard_widget for all
 to authenticated
-using (
-  scope = 'shared'
-  and person_id is null
-  and public.is_couple_member(couple_id)
-)
-with check (
-  scope = 'shared'
-  and person_id is null
-  and public.is_couple_member(couple_id)
-);
-
-create policy "Members update own person widgets"
-on public.dashboard_widget for update
-to authenticated
-using (
-  scope = 'person'
-  and person_id is not null
-  and public.is_current_partner_for_widget(couple_id, person_id)
-)
-with check (
-  scope = 'person'
-  and person_id is not null
-  and public.is_current_partner_for_widget(couple_id, person_id)
-);
+using (public.is_couple_member(couple_id))
+with check (public.is_couple_member(couple_id));
 
 create policy "App admins manage widgets"
 on public.dashboard_widget for all
@@ -1172,6 +1156,12 @@ to authenticated
 with check (
   source = 'partner'
   and public.is_couple_member(couple_id)
+  and triggered_by_partner_id in (
+    select member.partner_id
+    from public.couple_member member
+    where member.couple_id = couple_alert.couple_id
+      and member.user_id = auth.uid()
+  )
 );
 
 create policy "App admins manage alerts"
@@ -1186,14 +1176,14 @@ grant usage on schema public to authenticated;
 
 grant select (user_id, created_at) on public.app_admin to authenticated;
 grant insert, update, delete on public.app_admin to authenticated;
-grant select (id, slug, name, subtitle, relationship_start, wedding_date, anniversary_date, created_at)
+grant select (id, slug, name, subtitle, relationship_start, wedding_date, created_at)
   on public.couple to authenticated;
 grant insert, update, delete on public.couple to authenticated;
 grant select (id, couple_id, slug, name, role, accent, created_at)
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
-grant select, update, delete on public.dashboard_widget to authenticated;
+grant select, insert, update, delete on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function public.is_app_admin() to authenticated;
@@ -1203,16 +1193,17 @@ grant execute on function public.list_my_couples() to authenticated;
 grant execute on function public.get_couple_invite_status(uuid) to authenticated;
 grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
-grant execute on function public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text) to authenticated;
+grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
-grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text) to authenticated;
+grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, uuid, text, text, uuid, text, text) to authenticated;
 grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
 grant execute on function public.admin_delete_tenant(uuid) to authenticated;
 grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb) to authenticated;
-grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb) to authenticated;
+grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb) to authenticated;
+grant execute on function public.delete_dashboard_widget(uuid) to authenticated;
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
 grant execute on function public.set_alert_active(uuid, boolean) to authenticated;
-grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz) to authenticated;
+grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz, uuid) to authenticated;
 
 do $$
 begin

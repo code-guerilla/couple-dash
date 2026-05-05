@@ -22,7 +22,6 @@ export const defaultCouples: Couple[] = [
     subtitle: 'Kitchen table production environment',
     relationshipStart: '2018-04-04',
     weddingDate: '2026-08-22',
-    anniversaryDate: '2027-08-22',
     partners: [
       {
         id: 'partner-paul',
@@ -47,7 +46,6 @@ export const defaultCouples: Couple[] = [
     subtitle: 'Home happiness control plane',
     relationshipStart: '2020-10-17',
     weddingDate: '2026-09-12',
-    anniversaryDate: '2027-09-12',
     partners: [
       {
         id: 'partner-lina',
@@ -81,7 +79,6 @@ const widget = (
   label,
   value,
   detail,
-  scope: 'shared',
   visual: 'stat',
   order,
   tone: 'info',
@@ -109,7 +106,6 @@ const timelineEntry = (
 const defaultTimelineEntries = (
   relationshipStart: string,
   weddingDate: string,
-  anniversaryDate: string,
 ): TimelineEntry[] => [
   timelineEntry(
     'first-met',
@@ -117,34 +113,6 @@ const defaultTimelineEntries = (
     'First Met',
     'The first chapter of the story.',
     'i-lucide-sparkles',
-  ),
-  timelineEntry(
-    'official-couple',
-    anniversaryDate,
-    'Officially a Couple',
-    'The anniversary date that anchors the dashboard.',
-    'i-lucide-badge-check',
-  ),
-  timelineEntry(
-    'moved-together',
-    anniversaryDate,
-    'Moved Together',
-    'One place, two routines, shared keys.',
-    'i-lucide-home',
-  ),
-  timelineEntry(
-    'fur-baby',
-    anniversaryDate,
-    'Fur-Baby Date',
-    'The day the household got cuter.',
-    'i-lucide-paw-print',
-  ),
-  timelineEntry(
-    'engagement',
-    anniversaryDate,
-    'The Engagement',
-    'A yes worth keeping visible.',
-    'i-lucide-gem',
   ),
   timelineEntry(
     'wedding',
@@ -160,13 +128,13 @@ export const defaultWidgets: DashboardWidget[] = [
     'couple-paul-anna',
     'timeline',
     'Our Timeline',
-    '6 milestones',
+    '2 milestones',
     'The relationship milestones that make the dashboard personal.',
     1,
     {
       visual: 'timeline',
       tone: 'success',
-      timelineEntries: defaultTimelineEntries('2018-04-04', '2026-08-22', '2018-08-22'),
+      timelineEntries: defaultTimelineEntries('2018-04-04', '2026-08-22'),
     },
   ),
   widget(
@@ -179,21 +147,6 @@ export const defaultWidgets: DashboardWidget[] = [
     {
       tone: 'success',
       visual: 'stat',
-    },
-  ),
-  widget(
-    'couple-paul-anna',
-    'anniversary',
-    'Days Until 2nd Anniversary',
-    '200',
-    'Romance calendar is warming up.',
-    3,
-    {
-      unit: 'days',
-      visual: 'radial',
-      numericValue: 45,
-      max: 100,
-      tone: 'info',
     },
   ),
   widget(
@@ -252,62 +205,11 @@ export const defaultWidgets: DashboardWidget[] = [
   ),
   widget(
     'couple-paul-anna',
-    'paul-hungry',
-    "Paul's Hungry Level",
-    'Starving',
-    'Snack cache should be replenished.',
-    8,
-    {
-      scope: 'person',
-      personId: 'partner-paul',
-      visual: 'stat',
-      tone: 'warning',
-    },
-  ),
-  widget('couple-paul-anna', 'anna-mood', "Anna's Mood", 'Cozy', 'Blanket mode active.', 9, {
-    scope: 'person',
-    personId: 'partner-anna',
-    visual: 'stat',
-    tone: 'success',
-  }),
-  widget(
-    'couple-paul-anna',
-    'paul-battery',
-    "Paul's Battery Level",
-    '12',
-    'Immediate charging via food and silence advised.',
-    10,
-    {
-      scope: 'person',
-      personId: 'partner-paul',
-      unit: '%',
-      visual: 'radial',
-      numericValue: 12,
-      max: 100,
-      tone: 'error',
-    },
-  ),
-  widget(
-    'couple-paul-anna',
-    'anna-coffee',
-    "Anna's Coffee Requirement",
-    'Critical',
-    'Coffee queue priority elevated.',
-    11,
-    {
-      scope: 'person',
-      personId: 'partner-anna',
-      visual: 'stat',
-      tone: 'warning',
-    },
-  ),
-  widget(
-    'couple-paul-anna',
     'forgiveness',
     'Time to Forgive After Fight',
     '14m',
     'Drops to 4m when dessert is involved.',
-    12,
+    8,
     {
       visual: 'progress',
       numericValue: 14,
@@ -321,7 +223,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Dinner Decision Latency',
     '47m',
     'Decision quorum remains complicated.',
-    13,
+    9,
     {
       visual: 'progress',
       numericValue: 47,
@@ -335,7 +237,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Daily Hug Quota',
     '8 / 12',
     'Four hugs remain before midnight.',
-    14,
+    10,
     {
       visual: 'progress',
       numericValue: 66,
@@ -349,7 +251,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Cuddle Bandwidth',
     'High',
     'Streaming available in 4K comfort.',
-    15,
+    11,
     {
       visual: 'stat',
       tone: 'success',
@@ -361,7 +263,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Weekend Allocation',
     '40% sofa / 35% friends / 25% naps',
     'Balanced but nap capacity can scale.',
-    16,
+    12,
     {
       visual: 'bar',
       numericValue: 40,
@@ -374,7 +276,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Latest Shared Memory',
     'Tried a new ramen place and rated broth like engineers.',
     'Indexed 2 hours ago.',
-    17,
+    13,
     {
       visual: 'memory',
       tone: 'success',
@@ -386,7 +288,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Woraus die Beziehung besteht',
     '100%',
     'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.',
-    18,
+    14,
     {
       visual: 'donut',
       tone: 'success',
@@ -408,7 +310,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Gewonnene Diskussionen',
     '75%',
     'Beide tun so, als hätten sie gewonnen.',
-    19,
+    15,
     {
       visual: 'donut',
       tone: 'warning',
@@ -429,7 +331,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Top Beziehungsthemen',
     '87',
     'Ranking der wichtigsten Haushaltskonferenzen.',
-    20,
+    16,
     {
       visual: 'bar',
       tone: 'info',
@@ -446,7 +348,7 @@ export const defaultWidgets: DashboardWidget[] = [
     'Romantik im Zeitverlauf',
     '100',
     'Fake Trend, echte Gefühle.',
-    21,
+    17,
     {
       visual: 'line',
       tone: 'success',
@@ -462,13 +364,13 @@ export const defaultWidgets: DashboardWidget[] = [
     'couple-lina-tom',
     'timeline',
     'Our Timeline',
-    '6 milestones',
+    '2 milestones',
     'The relationship milestones that make the dashboard personal.',
     1,
     {
       visual: 'timeline',
       tone: 'success',
-      timelineEntries: defaultTimelineEntries('2020-10-17', '2026-09-12', '2020-11-14'),
+      timelineEntries: defaultTimelineEntries('2020-10-17', '2026-09-12'),
     },
   ),
   widget(
@@ -588,17 +490,6 @@ export const defaultAlerts: CoupleAlert[] = [
     title: 'Snack shortage detected',
     detail: 'Pantry telemetry below acceptable movie-night threshold.',
     severity: 'warning',
-    source: 'system',
-    active: true,
-    createdAt: now,
-    expiresAt: nextMidnight,
-  },
-  {
-    id: 'alert-anniversary',
-    coupleId: 'couple-paul-anna',
-    title: 'Anniversary approaching',
-    detail: 'Prepare flowers, dinner slot, or a suspiciously thoughtful plan.',
-    severity: 'info',
     source: 'system',
     active: true,
     createdAt: now,

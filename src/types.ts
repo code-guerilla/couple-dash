@@ -1,5 +1,3 @@
-export type WidgetScope = 'shared' | 'person'
-
 export type WidgetVisual =
   | 'stat'
   | 'progress'
@@ -27,7 +25,6 @@ export interface Couple {
   subtitle: string
   relationshipStart: string
   weddingDate: string
-  anniversaryDate: string
   partners: Partner[]
 }
 
@@ -56,8 +53,6 @@ export interface DashboardWidget {
   value: string
   unit?: string
   detail: string
-  scope: WidgetScope
-  personId?: string
   visual: WidgetVisual
   order: number
   min?: number
@@ -81,6 +76,7 @@ export interface CoupleAlert {
   active: boolean
   createdAt: string
   expiresAt?: string
+  triggeredByPartnerId?: string
   triggeredBy?: string
 }
 

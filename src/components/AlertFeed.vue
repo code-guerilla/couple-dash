@@ -15,45 +15,80 @@ const alertClasses: Record<CoupleAlert['severity'], AlertProps['color']> = {
 }
 
 const { t } = useI18n()
+
+function alertCreator(alert: CoupleAlert) {
+  return alert.source === 'system' ? 'System' : (alert.triggeredBy ?? t('alerts.partnerFallback'))
+}
 </script>
 
 <template>
-  <section class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-black">{{ t('alerts.title') }}</h2>
-      <UBadge color="neutral" variant="soft">
-        {{ t('alerts.active', { count: alerts.length }) }}
-      </UBadge>
+  <section v-if="alerts.length" class="overflow-hidden border-y border-default bg-default/70">
+    <div
+      v-if="alerts.length <= 2"
+      class="alert-strip-track flex w-max min-w-full gap-3 px-4 py-2 sm:px-6 lg:px-8"
+    >
+      <UAlert
+        v-for="alert in alerts"
+        :key="alert.id"
+        :color="alertClasses[alert.severity]"
+        variant="outline"
+        class="w-fit min-w-56 max-w-[min(32rem,calc(100vw-3rem))] shrink-0"
+      >
+        <template #description>
+          <div class="min-w-0">
+            <!-- Directly using alert.title here -->
+            <h3 class="line-clamp-1 font-bold">{{ alert.title }}</h3>
+            <p class="mt-2 line-clamp-1 text-xs font-semibold opacity-70">
+              {{ alertCreator(alert) }}
+            </p>
+          </div>
+        </template>
+      </UAlert>
     </div>
 
-    <UAlert
-      v-if="alerts.length === 0"
-      color="success"
-      variant="soft"
-      :description="t('alerts.none')"
-    />
-
-    <UAlert
-      v-for="alert in alerts"
-      :key="alert.id"
-      :color="alertClasses[alert.severity]"
-      variant="outline"
+    <UMarquee
+      v-else
+      pause-on-hover
+      :overlay="false"
+      :ui="{ root: '[--gap:--spacing(3)] [--duration:64s]', content: 'w-auto py-2' }"
     >
-      <template #description>
-        <div class="min-w-0">
-          <h3 class="font-bold">{{ alert.title }}</h3>
-          <p class="text-sm">{{ alert.detail }}</p>
-          <p class="mt-1 text-xs opacity-70">
-            {{
-              alert.source === 'system'
-                ? t('alerts.systemGenerated')
-                : t('alerts.triggeredBy', {
-                    name: alert.triggeredBy ?? t('alerts.partnerFallback'),
-                  })
-            }}
-          </p>
-        </div>
-      </template>
-    </UAlert>
+      <UAlert
+        v-for="alert in alerts"
+        :key="alert.id"
+        :color="alertClasses[alert.severity]"
+        variant="outline"
+        class="w-64 shrink-0"
+      >
+        <template #description>
+          <div class="min-w-0">
+            <!-- Directly using alert.title here -->
+            <h3 class="line-clamp-1 font-bold">{{ alert.title }}</h3>
+            <p class="mt-2 line-clamp-1 text-xs font-semibold opacity-70">
+              {{ alertCreator(alert) }}
+            </p>
+          </div>
+        </template>
+      </UAlert>
+    </UMarquee>
   </section>
 </template>
+
+<style scoped>
+.alert-strip-track {
+  animation: alert-strip-marquee 36s linear infinite;
+}
+
+.alert-strip-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes alert-strip-marquee {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+</style>

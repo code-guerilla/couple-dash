@@ -33,7 +33,6 @@ const text = {
   subtitlePlaceholder: 'Private kitchen dashboard',
   relationshipStart: 'Relationship start',
   weddingDate: 'Wedding date',
-  anniversaryDate: 'Anniversary date',
   partnerAName: 'Partner A name',
   partnerANamePlaceholder: 'Anna',
   partnerASlug: 'Partner A slug',
@@ -51,14 +50,36 @@ const text = {
   partnerBInvite: 'Partner B invite',
 }
 
-const today = new Date().toISOString().slice(0, 10)
+function dateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function addYears(date: Date, years: number) {
+  const nextDate = new Date(date)
+  nextDate.setFullYear(nextDate.getFullYear() + years)
+  return nextDate
+}
+
+function addMonths(date: Date, months: number) {
+  const nextDate = new Date(date)
+  nextDate.setMonth(nextDate.getMonth() + months)
+  return nextDate
+}
+
+function defaultRelationshipStart() {
+  return dateInputValue(addYears(new Date(), -5))
+}
+
+function defaultWeddingDate() {
+  return dateInputValue(addMonths(new Date(), 1))
+}
+
 const form = reactive({
   name: '',
   slug: '',
   subtitle: '',
-  relationshipStart: today,
-  weddingDate: today,
-  anniversaryDate: today,
+  relationshipStart: defaultRelationshipStart(),
+  weddingDate: defaultWeddingDate(),
   partnerAName: '',
   partnerASlug: '',
   partnerBName: '',
@@ -187,7 +208,6 @@ async function createTenant() {
       p_subtitle: form.subtitle,
       p_relationship_start: form.relationshipStart,
       p_wedding_date: form.weddingDate,
-      p_anniversary_date: form.anniversaryDate,
       p_partner_a_name: form.partnerAName,
       p_partner_a_slug: form.partnerASlug,
       p_partner_b_name: form.partnerBName,
@@ -207,9 +227,8 @@ async function createTenant() {
   form.name = ''
   form.slug = ''
   form.subtitle = ''
-  form.relationshipStart = today
-  form.weddingDate = today
-  form.anniversaryDate = today
+  form.relationshipStart = defaultRelationshipStart()
+  form.weddingDate = defaultWeddingDate()
   form.partnerAName = ''
   form.partnerASlug = ''
   form.partnerBName = ''
@@ -317,15 +336,12 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
               />
             </UFormField>
 
-            <div class="grid gap-3 sm:grid-cols-3">
+            <div class="grid gap-3 sm:grid-cols-2">
               <UFormField :label="text.relationshipStart" required>
                 <UInput v-model="form.relationshipStart" class="w-full" required type="date" />
               </UFormField>
               <UFormField :label="text.weddingDate" required>
                 <UInput v-model="form.weddingDate" class="w-full" required type="date" />
-              </UFormField>
-              <UFormField :label="text.anniversaryDate" required>
-                <UInput v-model="form.anniversaryDate" class="w-full" required type="date" />
               </UFormField>
             </div>
 

@@ -18,14 +18,9 @@ const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashbo
   coupleSlug.value,
 )
 
-const sharedWidgets = computed(() =>
-  visibleWidgets.value.filter((widget) => widget.scope === 'shared' && widget.visual !== 'timeline'),
-)
+const sharedWidgets = computed(() => visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'))
 const timelineWidgets = computed(() =>
   visibleWidgets.value.filter((widget) => widget.visual === 'timeline'),
-)
-const personWidgets = computed(() =>
-  visibleWidgets.value.filter((widget) => widget.scope === 'person'),
 )
 
 const daysUntilWedding = computed(() => {
@@ -49,10 +44,6 @@ const relationshipUptime = computed(() => {
   const restDays = days % 365
   return `${years}y ${restDays}d`
 })
-
-function partnerName(personId?: string) {
-  return couple.value?.partners.find((partner) => partner.id === personId)?.name
-}
 
 async function loadDisplay() {
   if (!isSupabaseConfigured) {
@@ -80,7 +71,9 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
   </section>
 
   <section v-else-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
-    <div class="grid gap-4 xl:grid-cols-[1fr_21rem]">
+    <AlertFeed class="relative left-1/2 -mt-8 w-screen -translate-x-1/2 sm:-mt-10" :alerts="alerts" />
+
+    <div class="grid gap-4">
       <UCard :ui="{ body: 'p-6 sm:p-10' }">
         <div class="w-full justify-start">
           <div class="max-w-4xl">
@@ -137,8 +130,6 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
           </div>
         </div>
       </UCard>
-
-      <AlertFeed :alerts="alerts" />
     </div>
 
     <div v-if="loading" class="grid gap-4 md:grid-cols-3">
@@ -165,40 +156,19 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       </div>
     </section>
 
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-black">{{ t('dashboard.personMetrics') }}</h2>
-        <UBadge color="neutral" variant="soft">
-          {{ t('dashboard.visible', { count: personWidgets.length }) }}
-        </UBadge>
-      </div>
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricTile
-          v-for="widget in personWidgets"
-          :key="widget.id"
-          :owner-name="partnerName(widget.personId)"
-          :widget="widget"
-        />
-      </div>
-    </section>
-
     <div class="grid gap-4 sm:grid-cols-2 xl:hidden">
       <QrCodeCard
-        v-for="partner in couple.partners"
-        :key="partner.id"
-        :label="t('dashboard.editLogin', { name: partner.name })"
-        :person="partner.name"
+        :label="t('dashboard.editLogin')"
+        :person="t('edit.sharedDashboard')"
         :url="`/edit/${couple.slug}`"
       />
     </div>
 
-    <div class="pointer-events-none fixed inset-x-4 bottom-4 z-10 hidden justify-between xl:flex">
+    <div class="pointer-events-none fixed inset-x-4 bottom-4 z-10 hidden justify-end xl:flex">
       <QrCodeCard
-        v-for="partner in couple.partners"
-        :key="partner.id"
         class="pointer-events-auto"
-        :label="t('dashboard.editLogin', { name: partner.name })"
-        :person="partner.name"
+        :label="t('dashboard.editLogin')"
+        :person="t('edit.sharedDashboard')"
         :url="`/edit/${couple.slug}`"
       />
     </div>

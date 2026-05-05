@@ -34,6 +34,7 @@ const {
   loadCouple,
   updateWidget,
   addWidget,
+  deleteWidget,
   setWidgetVisible,
   triggerAlert,
   setAlertActive,
@@ -76,20 +77,8 @@ const pendingInviteUrl = computed(() => {
   const origin = window.location.origin.replace(/\/$/, '')
   return `${origin}/invite/${pendingInvite.value.couple_slug}/${pendingInvite.value.partner_slug}?token=${pendingInvite.value.invite_token}`
 })
-const editableWidgets = computed(() =>
-  widgets.value.filter(
-    (widget) => widget.scope === 'shared' || widget.personId === currentPartnerId.value,
-  ),
-)
-const editableMetricWidgets = computed(() =>
-  editableWidgets.value.filter((widget) => widget.visual !== 'timeline'),
-)
-const sharedMetricWidgets = computed(() =>
-  editableMetricWidgets.value.filter((widget) => widget.scope === 'shared'),
-)
-const personalMetricWidgets = computed(() =>
-  editableMetricWidgets.value.filter((widget) => widget.scope !== 'shared'),
-)
+const editableWidgets = computed(() => widgets.value)
+const editableMetricWidgets = computed(() => editableWidgets.value.filter((widget) => widget.visual !== 'timeline'))
 const editableTimelineWidgets = computed(() =>
   editableWidgets.value.filter((widget) => widget.visual === 'timeline'),
 )
@@ -114,25 +103,18 @@ const toneOptions = computed(() =>
 const chartVisualOptions = computed(() =>
   chartVisuals.map((value) => ({ label: t(`edit.visuals.${value}`), value })),
 )
-const alertTemplateStorageKey = computed(() => `couple-dash-alert-templates:${coupleSlug.value}`)
+const alertTemplateOwnerKey = computed(() => currentPartnerId.value ?? 'unlinked')
+const alertTemplateStorageKey = computed(
+  () => `couple-dash-alert-templates:${coupleSlug.value}:${alertTemplateOwnerKey.value}`,
+)
 const seededAlertTemplates = computed<AlertTemplateDraft[]>(() =>
-  alertTemplates.map((template) => {
-    const templatePartner =
-      couple.value?.partners.find(
-        (item) => item.name.toLowerCase() === template.partnerName.toLowerCase(),
-      ) ?? couple.value?.partners[template.partnerIndex]
-    const name = templatePartner?.name ?? template.partnerName
-    const title = `${name}: ${template.text}`
-
-    return {
-      id: template.id,
-      title,
-      severity: template.severity,
-    }
-  }),
+  alertTemplates.map((template) => ({
+    id: template.id,
+    title: template.text,
+    severity: template.severity,
+  })),
 )
 const alertTemplateCount = computed(() => alertTemplateDrafts.value.length)
-const editAccordionDefaultValue = ['alerts', 'relationship-timeline', 'live-metrics']
 const editAccordionItems = computed(() => [
   ...(editableTimelineWidgets.value.length
     ? [
@@ -154,23 +136,6 @@ const editAccordionItems = computed(() => [
     value: 'alerts',
   },
 ])
-const metricTabItems = computed(() => [
-  {
-    label: t('edit.shared'),
-    icon: 'i-lucide-users',
-    badge: sharedMetricWidgets.value.length,
-    value: 'shared',
-    widgets: sharedMetricWidgets.value,
-  },
-  {
-    label: partner.value?.name ?? t('edit.onlyMine'),
-    icon: 'i-lucide-user',
-    badge: personalMetricWidgets.value.length,
-    value: 'personal',
-    widgets: personalMetricWidgets.value,
-  },
-])
-
 async function loadMembership() {
   currentPartnerId.value = null
   membershipError.value = null
@@ -238,6 +203,10 @@ async function saveWidget(widget: DashboardWidget) {
   })
 }
 
+async function removeWidget(widget: DashboardWidget) {
+  await deleteWidget(widget.id)
+}
+
 function isChartWidget(widget: DashboardWidget) {
   return chartVisuals.includes(widget.visual as ChartVisual)
 }
@@ -282,7 +251,6 @@ async function createChartWidget() {
     label: chartDraft.label.trim(),
     value: String(chartData.reduce((sum, row) => sum + row.value, 0)),
     detail: chartDraft.detail.trim(),
-    scope: 'shared',
     visual: chartDraft.visual,
     order: Math.max(0, ...widgets.value.map((widget) => widget.order)) + 1,
     tone: chartDraft.tone,
@@ -340,7 +308,9 @@ function loadAlertTemplates() {
     return
   }
 
-  const stored = localStorage.getItem(alertTemplateStorageKey.value)
+  const stored =
+    localStorage.getItem(alertTemplateStorageKey.value) ??
+    localStorage.getItem(`couple-dash-alert-templates:${coupleSlug.value}`)
   if (!stored) {
     alertTemplateDrafts.value = seededAlertTemplates.value
     return
@@ -352,7 +322,7 @@ function loadAlertTemplates() {
       .filter((item) => item.id && item.title)
       .map((item) => ({
         id: String(item.id),
-        title: String(item.title),
+        title: normalizeAlertTitle(String(item.title)),
         severity: toneOptionValues.includes(item.severity as AlertSeverity)
           ? (item.severity as AlertSeverity)
           : 'info',
@@ -370,21 +340,29 @@ function persistAlertTemplates() {
   localStorage.setItem(alertTemplateStorageKey.value, JSON.stringify(alertTemplateDrafts.value))
 }
 
-function customAlertTitle(text: string) {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeAlertTitle(text: string) {
   const title = text.trim()
   if (!title) {
     return ''
   }
 
-  if (title.includes(':')) {
-    return title
+  const names = couple.value?.partners.map((item) => item.name).filter(Boolean) ?? []
+  for (const name of names) {
+    const legacyPrefix = new RegExp(`^${escapeRegExp(name)}\\s*:\\s*`, 'i')
+    if (legacyPrefix.test(title)) {
+      return title.replace(legacyPrefix, '').trim()
+    }
   }
 
-  return `${partner.value?.name ?? t('edit.partnerFallback')}: ${title}`
+  return title
 }
 
 function addCustomAlertTemplate() {
-  const title = customAlertTitle(customAlertDraft.value)
+  const title = normalizeAlertTitle(customAlertDraft.value)
   if (!title) {
     return
   }
@@ -433,19 +411,21 @@ function cancelAlertTemplateEdit() {
 
 async function saveAlertTemplate(template: AlertTemplateDraft) {
   const previousTitle = template.title
-  const title = customAlertTitle(alertTemplateEditTitle.value)
+  const title = normalizeAlertTitle(alertTemplateEditTitle.value)
   if (!title) {
     await removeAlertTemplate(template)
     return
   }
 
   const activeAlert = activeAlertForTitle(previousTitle)
-  template.title = title
+  alertTemplateDrafts.value = alertTemplateDrafts.value.map((item) =>
+    item.id === template.id ? { ...item, title } : item,
+  )
   persistAlertTemplates()
 
   if (activeAlert && previousTitle !== title) {
     await setAlertActive(activeAlert.id, false)
-    await sendAlert(template)
+    await sendAlert({ ...template, title })
   }
 
   cancelAlertTemplateEdit()
@@ -462,12 +442,23 @@ async function sendAlert(alert: Pick<AlertTemplateDraft, 'title' | 'severity'>) 
     detail: t('edit.raisedFrom', { name: partner.value?.name ?? t('alerts.partnerFallback') }),
     severity: alert.severity,
     source: 'partner',
+    triggeredByPartnerId: currentPartnerId.value ?? undefined,
     triggeredBy: partner.value?.name,
   })
 }
 
 function activeAlertForTitle(title: string) {
-  return alerts.value.find((alert) => alert.title === title)
+  return alerts.value.find((alert) => {
+    if (normalizeAlertTitle(alert.title) !== title || alert.source !== 'partner') {
+      return false
+    }
+
+    if (alert.triggeredByPartnerId) {
+      return alert.triggeredByPartnerId === currentPartnerId.value
+    }
+
+    return !!partner.value?.name && alert.triggeredBy === partner.value.name
+  })
 }
 
 async function toggleAlert(alert: Pick<AlertTemplateDraft, 'title' | 'severity'>) {
@@ -528,7 +519,7 @@ async function copyPendingInvite() {
 }
 
 watch(userId, () => void loadPrivateEditor())
-watch(coupleSlug, loadAlertTemplates)
+watch([coupleSlug, alertTemplateOwnerKey], loadAlertTemplates)
 
 onMounted(() => {
   void loadPrivateEditor().then(loadAlertTemplates)
@@ -545,7 +536,7 @@ onMounted(() => {
       <div>
         <p class="text-sm font-semibold text-muted">{{ couple.name }}</p>
         <h1 class="text-3xl font-black">
-          {{ t('edit.console', { name: partner?.name ?? t('edit.partnerFallback') }) }}
+          {{ t('edit.sharedDashboardEditor') }}
         </h1>
       </div>
       <UButton
@@ -607,9 +598,9 @@ onMounted(() => {
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm text-muted">{{ t('edit.editableMetrics') }}</div>
-            <div class="text-sm text-muted">{{ t('edit.editableMetricsDescription') }}</div>
+            <div class="text-sm text-muted">{{ t('edit.sharedDashboardDescription') }}</div>
           </div>
-          <div class="text-3xl font-black leading-none">{{ editableWidgets.length }}</div>
+          <div class="text-3xl font-black leading-none">{{ editableMetricWidgets.length }}</div>
         </div>
       </UCard>
       <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-4' }">
@@ -627,7 +618,6 @@ onMounted(() => {
 
     <UAccordion
       :items="editAccordionItems"
-      :default-value="editAccordionDefaultValue"
       :unmount-on-hide="false"
       type="multiple"
       class="rounded-xl border border-default px-4"
@@ -777,142 +767,128 @@ onMounted(() => {
             </div>
           </form>
 
-          <UTabs
-            :items="metricTabItems"
-            :unmount-on-hide="false"
-            default-value="shared"
-            variant="link"
-          >
-            <template #content="{ item: tab }">
-              <div class="space-y-3">
-                <UCard
-                  v-for="widget in tab.widgets"
-                  :key="widget.id"
-                  variant="subtle"
-                  :ui="{ body: 'p-4 sm:p-4' }"
-                >
-                  <form class="grid gap-4" @submit.prevent="saveWidget(widget)">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <div class="flex items-center gap-2">
-                        <UBadge
-                          :color="widget.scope === 'shared' ? 'info' : 'neutral'"
-                          variant="soft"
-                        >
-                          {{ widget.scope === 'shared' ? t('edit.shared') : t('edit.onlyMine') }}
-                        </UBadge>
-                        <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
-                          {{ widget.visible ? t('edit.visible') : t('edit.hidden') }}
-                        </UBadge>
-                      </div>
-                      <div class="flex gap-2">
-                        <UButton
-                          :label="widget.visible ? t('edit.hide') : t('edit.show')"
-                          variant="outline"
-                          size="sm"
-                          type="button"
-                          @click="setWidgetVisible(widget.id, !widget.visible)"
-                        />
-                        <UButton :label="t('edit.save')" size="sm" type="submit" />
-                      </div>
-                    </div>
+          <div class="space-y-3">
+            <UCard
+              v-for="widget in editableMetricWidgets"
+              :key="widget.id"
+              variant="subtle"
+              :ui="{ body: 'p-4 sm:p-4' }"
+            >
+              <form class="grid gap-4" @submit.prevent="saveWidget(widget)">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <UBadge color="info" variant="soft">{{ t('edit.sharedDashboard') }}</UBadge>
+                    <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
+                      {{ widget.visible ? t('edit.visible') : t('edit.hidden') }}
+                    </UBadge>
+                  </div>
+                  <div class="flex gap-2">
+                    <UButton
+                      :label="widget.visible ? t('edit.hide') : t('edit.show')"
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      @click="setWidgetVisible(widget.id, !widget.visible)"
+                    />
+                    <UButton
+                      :aria-label="t('edit.delete')"
+                      color="error"
+                      icon="i-lucide-trash-2"
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      @click="removeWidget(widget)"
+                    />
+                    <UButton :label="t('edit.save')" size="sm" type="submit" />
+                  </div>
+                </div>
 
-                    <div class="grid gap-3 sm:grid-cols-2">
-                      <UFormField :label="t('edit.metricKey')">
-                        <UInput v-model="widget.label" class="w-full font-semibold" />
-                      </UFormField>
-                      <UFormField :label="t('edit.value')">
-                        <UInput v-model="widget.value" class="w-full text-lg" />
-                      </UFormField>
-                    </div>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <UFormField :label="t('edit.metricKey')">
+                    <UInput v-model="widget.label" class="w-full font-semibold" />
+                  </UFormField>
+                  <UFormField :label="t('edit.value')">
+                    <UInput v-model="widget.value" class="w-full text-lg" />
+                  </UFormField>
+                </div>
 
-                    <UFormField :label="t('edit.explanation')">
-                      <UTextarea v-model="widget.detail" autoresize class="w-full" />
+                <UFormField :label="t('edit.explanation')">
+                  <UTextarea v-model="widget.detail" autoresize class="w-full" />
+                </UFormField>
+
+                <div v-if="isChartWidget(widget)" class="grid gap-3 rounded-md border border-default p-3">
+                  <div v-if="widget.visual === 'donut'" class="grid gap-3 sm:grid-cols-2">
+                    <UFormField :label="t('edit.chartCentralLabel')">
+                      <UInput v-model="widget.chartOptions.centralLabel" class="w-full" />
                     </UFormField>
+                    <UFormField :label="t('edit.chartCentralSubLabel')">
+                      <UInput v-model="widget.chartOptions.centralSubLabel" class="w-full" />
+                    </UFormField>
+                  </div>
 
-                    <div v-if="isChartWidget(widget)" class="grid gap-3 rounded-md border border-default p-3">
-                      <div
-                        v-if="widget.visual === 'donut'"
-                        class="grid gap-3 sm:grid-cols-2"
-                      >
-                        <UFormField :label="t('edit.chartCentralLabel')">
-                          <UInput
-                            v-model="widget.chartOptions.centralLabel"
-                            class="w-full"
-                          />
-                        </UFormField>
-                        <UFormField :label="t('edit.chartCentralSubLabel')">
-                          <UInput
-                            v-model="widget.chartOptions.centralSubLabel"
-                            class="w-full"
-                          />
-                        </UFormField>
-                      </div>
-
-                      <div class="grid gap-2">
-                        <div
-                          v-for="(row, index) in widget.chartData"
-                          :key="index"
-                          class="grid gap-2 sm:grid-cols-[1fr_8rem_auto]"
-                        >
-                          <UInput v-model="row.label" :placeholder="t('edit.chartLabel')" />
-                          <UInputNumber
-                            :model-value="row.value"
-                            @update:model-value="row.value = $event ?? 0"
-                          />
-                          <UButton
-                            :aria-label="t('edit.delete')"
-                            color="neutral"
-                            icon="i-lucide-trash-2"
-                            variant="ghost"
-                            type="button"
-                            @click="removeChartRow(widget, index)"
-                          />
-                        </div>
-                        <UButton
-                          class="justify-self-start"
-                          icon="i-lucide-plus"
-                          :label="t('edit.addChartRow')"
-                          variant="outline"
-                          type="button"
-                          @click="addChartRow(widget)"
-                        />
-                      </div>
+                  <div class="grid gap-2">
+                    <div
+                      v-for="(row, index) in widget.chartData"
+                      :key="index"
+                      class="grid gap-2 sm:grid-cols-[1fr_8rem_auto]"
+                    >
+                      <UInput v-model="row.label" :placeholder="t('edit.chartLabel')" />
+                      <UInputNumber
+                        :model-value="row.value"
+                        @update:model-value="row.value = $event ?? 0"
+                      />
+                      <UButton
+                        :aria-label="t('edit.delete')"
+                        color="neutral"
+                        icon="i-lucide-trash-2"
+                        variant="ghost"
+                        type="button"
+                        @click="removeChartRow(widget, index)"
+                      />
                     </div>
+                    <UButton
+                      class="justify-self-start"
+                      icon="i-lucide-plus"
+                      :label="t('edit.addChartRow')"
+                      variant="outline"
+                      type="button"
+                      @click="addChartRow(widget)"
+                    />
+                  </div>
+                </div>
 
-                    <div class="grid gap-3 sm:grid-cols-3">
-                      <UFormField :label="t('edit.visual')">
-                        <USelect
-                          v-model="widget.visual"
-                          class="w-full"
-                          label-key="label"
-                          value-key="value"
-                          :items="visualOptions"
-                        />
-                      </UFormField>
-                      <UFormField :label="t('edit.tone')">
-                        <USelect
-                          v-model="widget.tone"
-                          class="w-full"
-                          label-key="label"
-                          value-key="value"
-                          :items="toneOptions"
-                        />
-                      </UFormField>
-                      <UFormField :label="t('edit.numericValue')">
-                        <UInputNumber
-                          class="w-full"
-                          :max="100"
-                          :min="0"
-                          :model-value="widget.numericValue ?? 0"
-                          @update:model-value="widget.numericValue = $event ?? 0"
-                        />
-                      </UFormField>
-                    </div>
-                  </form>
-                </UCard>
-              </div>
-            </template>
-          </UTabs>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <UFormField :label="t('edit.visual')">
+                    <USelect
+                      v-model="widget.visual"
+                      class="w-full"
+                      label-key="label"
+                      value-key="value"
+                      :items="visualOptions"
+                    />
+                  </UFormField>
+                  <UFormField :label="t('edit.tone')">
+                    <USelect
+                      v-model="widget.tone"
+                      class="w-full"
+                      label-key="label"
+                      value-key="value"
+                      :items="toneOptions"
+                    />
+                  </UFormField>
+                  <UFormField :label="t('edit.numericValue')">
+                    <UInputNumber
+                      class="w-full"
+                      :max="100"
+                      :min="0"
+                      :model-value="widget.numericValue ?? 0"
+                      @update:model-value="widget.numericValue = $event ?? 0"
+                    />
+                  </UFormField>
+                </div>
+              </form>
+            </UCard>
+          </div>
         </section>
 
         <section v-else class="space-y-3">

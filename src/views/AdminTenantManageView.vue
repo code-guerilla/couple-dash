@@ -39,7 +39,6 @@ const text = {
   subtitle: 'Subtitle',
   relationshipStart: 'Relationship start',
   weddingDate: 'Wedding date',
-  anniversaryDate: 'Anniversary date',
   partnerAName: 'Partner A name',
   partnerASlug: 'Partner A slug',
   partnerBName: 'Partner B name',
@@ -64,7 +63,6 @@ const editForm = reactive({
   subtitle: '',
   relationshipStart: today,
   weddingDate: today,
-  anniversaryDate: today,
   partnerAId: '',
   partnerAName: '',
   partnerASlug: '',
@@ -108,7 +106,6 @@ function fillEditForm(tenant: AdminTenantDetail) {
   editForm.subtitle = tenant.subtitle ?? ''
   editForm.relationshipStart = tenant.relationship_start
   editForm.weddingDate = tenant.wedding_date
-  editForm.anniversaryDate = tenant.anniversary_date
   editForm.partnerAId = partnerA?.id ?? ''
   editForm.partnerAName = partnerA?.name ?? ''
   editForm.partnerASlug = partnerA?.slug ?? ''
@@ -199,7 +196,6 @@ async function saveTenant() {
     p_subtitle: editForm.subtitle,
     p_relationship_start: editForm.relationshipStart,
     p_wedding_date: editForm.weddingDate,
-    p_anniversary_date: editForm.anniversaryDate,
     p_partner_a_id: editForm.partnerAId,
     p_partner_a_name: editForm.partnerAName,
     p_partner_a_slug: editForm.partnerASlug,
@@ -372,15 +368,12 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
               <UInput v-model="editForm.subtitle" class="w-full" />
             </UFormField>
 
-            <div class="grid gap-3 sm:grid-cols-3">
+            <div class="grid gap-3 sm:grid-cols-2">
               <UFormField :label="text.relationshipStart" required>
                 <UInput v-model="editForm.relationshipStart" class="w-full" required type="date" />
               </UFormField>
               <UFormField :label="text.weddingDate" required>
                 <UInput v-model="editForm.weddingDate" class="w-full" required type="date" />
-              </UFormField>
-              <UFormField :label="text.anniversaryDate" required>
-                <UInput v-model="editForm.anniversaryDate" class="w-full" required type="date" />
               </UFormField>
             </div>
 
