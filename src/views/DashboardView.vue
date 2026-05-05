@@ -46,12 +46,7 @@ const relationshipUptime = computed(() => {
 })
 
 async function loadDisplay() {
-  if (!isSupabaseConfigured) {
-    await loadCouple()
-    return
-  }
-
-  if (!initialized.value || !isAuthenticated.value) {
+  if (!isSupabaseConfigured || !initialized.value || !isAuthenticated.value) {
     return
   }
 
@@ -70,6 +65,12 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
     <AuthPanel />
   </section>
 
+  <section v-else-if="!isSupabaseConfigured" class="mx-auto max-w-xl space-y-4">
+    <UCard>
+      <UAlert color="warning" variant="soft" :description="t('dashboard.supabaseRequired')" />
+    </UCard>
+  </section>
+
   <section v-else-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
     <AlertFeed class="relative left-1/2 -mt-8 w-screen -translate-x-1/2 sm:-mt-10" :alerts="alerts" />
 
@@ -79,11 +80,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
           <div class="max-w-4xl">
             <div class="mb-5 flex flex-wrap gap-2">
               <UBadge color="success" variant="soft">{{ t('dashboard.privateSession') }}</UBadge>
-              <UBadge color="neutral" variant="soft">
-                {{
-                  isSupabaseConfigured ? t('dashboard.protectedRealtime') : t('dashboard.localDemo')
-                }}
-              </UBadge>
+              <UBadge color="neutral" variant="soft">{{ t('dashboard.protectedRealtime') }}</UBadge>
             </div>
             <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
             <p class="mt-4 max-w-2xl text-lg text-muted">{{ couple.subtitle }}</p>

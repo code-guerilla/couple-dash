@@ -1,8 +1,6 @@
 import { computed, readonly, ref } from "vue";
-import { canStorePreferences } from "@/composables/usePrivacyConsent";
-import { defaultState } from "@/data/defaults";
 import { i18n } from "@/i18n";
-import { isSupabaseConfigured, supabase } from "@/services/supabase";
+import { supabase } from "@/services/supabase";
 import type {
 	ChartDataPoint,
 	ChartOptions,
@@ -12,23 +10,11 @@ import type {
 	TimelineEntry,
 } from "@/types";
 
-const storageKey = "couple-dash-state-v1";
-const channelName = "couple-dash-realtime";
 const emptyState: DashboardState = { couples: [], widgets: [], alerts: [] };
-const state = ref<DashboardState>(
-	isSupabaseConfigured
-		? emptyState
-		: canStorePreferences()
-			? loadLocalState()
-			: cloneDefaults(),
-);
+const state = ref<DashboardState>(emptyState);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const currentTime = ref(Date.now());
-const broadcast =
-	typeof BroadcastChannel === "undefined"
-		? null
-		: new BroadcastChannel(channelName);
 let activeSubscription: { unsubscribe: () => void } | null = null;
 
 if (typeof window !== "undefined") {
@@ -39,33 +25,6 @@ if (typeof window !== "undefined") {
 
 function t(key: string) {
 	return i18n.global.t(key);
-}
-
-broadcast?.addEventListener(
-	"message",
-	(event: MessageEvent<DashboardState>) => {
-		if (!isSupabaseConfigured) {
-			state.value = event.data;
-		}
-	},
-);
-
-function cloneDefaults(): DashboardState {
-	return JSON.parse(JSON.stringify(defaultState)) as DashboardState;
-}
-
-function loadLocalState(): DashboardState {
-	const stored = localStorage.getItem(storageKey);
-
-	if (!stored) {
-		return cloneDefaults();
-	}
-
-	try {
-		return JSON.parse(stored) as DashboardState;
-	} catch {
-		return cloneDefaults();
-	}
 }
 
 function nextLocalMidnightIso() {
@@ -80,21 +39,6 @@ function isAlertVisible(alert: CoupleAlert) {
 	}
 
 	return !alert.expiresAt || Date.parse(alert.expiresAt) > currentTime.value;
-}
-
-function persistLocalState() {
-	if (isSupabaseConfigured) {
-		return;
-	}
-
-	if (!canStorePreferences()) {
-		localStorage.removeItem(storageKey);
-		broadcast?.postMessage(state.value);
-		return;
-	}
-
-	localStorage.setItem(storageKey, JSON.stringify(state.value));
-	broadcast?.postMessage(state.value);
 }
 
 function mapTimelineEntries(value: unknown): TimelineEntry[] {
@@ -310,26 +254,6 @@ function subscribeSupabaseCouple(coupleId: string, coupleSlug: string) {
 		.subscribe();
 }
 
-function applyLocalWidgetUpdate(
-	widgetId: string,
-	patch: Partial<DashboardWidget>,
-) {
-	const index = state.value.widgets.findIndex((item) => item.id === widgetId);
-	const currentWidget = state.value.widgets[index];
-
-	if (index === -1 || !currentWidget) {
-		return;
-	}
-
-	state.value.widgets[index] = {
-		...currentWidget,
-		...patch,
-		updatedAt: new Date().toISOString(),
-	};
-
-	persistLocalState();
-}
-
 export function useDashboardStore(coupleSlug?: string) {
 	const couples = computed(() => state.value.couples);
 	const couple = computed(() =>
@@ -356,125 +280,114 @@ export function useDashboardStore(coupleSlug?: string) {
 			return;
 		}
 
-		if (supabase) {
-			await loadSupabaseCouple(coupleSlug);
+		if (!supabase) {
+			error.value = t("dashboard.supabaseRequired");
+			state.value = emptyState;
 			return;
 		}
 
-		state.value = loadLocalState();
+		await loadSupabaseCouple(coupleSlug);
 	}
 
 	async function updateWidget(
 		widgetId: string,
 		patch: Partial<DashboardWidget>,
 	) {
-		if (supabase) {
-			const { error: updateError } = await supabase.rpc(
-				"update_dashboard_widget",
-				{
-					p_widget_id: widgetId,
-					p_label: patch.label ?? null,
-					p_value: patch.value ?? null,
-					p_unit: patch.unit ?? null,
-					p_detail: patch.detail ?? null,
-					p_visual: patch.visual ?? null,
-					p_tone: patch.tone ?? null,
-					p_numeric_value: patch.numericValue ?? null,
-					p_timeline_entries: patch.timelineEntries ?? null,
-					p_chart_data: patch.chartData ?? null,
-					p_chart_options: patch.chartOptions ?? null,
-				},
-			);
-
-			if (updateError) {
-				error.value = updateError.message;
-				throw updateError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		applyLocalWidgetUpdate(widgetId, patch);
+		const { error: updateError } = await supabase.rpc(
+			"update_dashboard_widget",
+			{
+				p_widget_id: widgetId,
+				p_label: patch.label ?? null,
+				p_value: patch.value ?? null,
+				p_unit: patch.unit ?? null,
+				p_detail: patch.detail ?? null,
+				p_visual: patch.visual ?? null,
+				p_tone: patch.tone ?? null,
+				p_numeric_value: patch.numericValue ?? null,
+				p_timeline_entries: patch.timelineEntries ?? null,
+				p_chart_data: patch.chartData ?? null,
+				p_chart_options: patch.chartOptions ?? null,
+			},
+		);
+
+		if (updateError) {
+			error.value = updateError.message;
+			throw updateError;
+		}
+
+		await loadCouple();
 	}
 
 	async function addWidget(widget: Omit<DashboardWidget, "id" | "updatedAt">) {
-		if (supabase) {
-			const { error: addError } = await supabase.rpc("add_dashboard_widget", {
-				p_couple_id: widget.coupleId,
-				p_label: widget.label,
-				p_value: widget.value ?? "",
-				p_unit: widget.unit ?? null,
-				p_detail: widget.detail ?? "",
-				p_visual: widget.visual,
-				p_sort_order: widget.order,
-				p_min_value: widget.min ?? null,
-				p_max_value: widget.max ?? null,
-				p_numeric_value: widget.numericValue ?? null,
-				p_tone: widget.tone,
-				p_timeline_entries: widget.timelineEntries ?? [],
-				p_chart_data: widget.chartData,
-				p_chart_options: widget.chartOptions,
-			});
-
-			if (addError) {
-				error.value = addError.message;
-				throw addError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		state.value.widgets.push({
-			...widget,
-			id: crypto.randomUUID(),
-			updatedAt: new Date().toISOString(),
+		const { error: addError } = await supabase.rpc("add_dashboard_widget", {
+			p_couple_id: widget.coupleId,
+			p_label: widget.label,
+			p_value: widget.value ?? "",
+			p_unit: widget.unit ?? null,
+			p_detail: widget.detail ?? "",
+			p_visual: widget.visual,
+			p_sort_order: widget.order,
+			p_min_value: widget.min ?? null,
+			p_max_value: widget.max ?? null,
+			p_numeric_value: widget.numericValue ?? null,
+			p_tone: widget.tone,
+			p_timeline_entries: widget.timelineEntries ?? [],
+			p_chart_data: widget.chartData,
+			p_chart_options: widget.chartOptions,
 		});
-		persistLocalState();
+
+		if (addError) {
+			error.value = addError.message;
+			throw addError;
+		}
+
+		await loadCouple();
 	}
 
 	async function deleteWidget(widgetId: string) {
-		if (supabase) {
-			const { error: deleteError } = await supabase.rpc(
-				"delete_dashboard_widget",
-				{
-					p_widget_id: widgetId,
-				},
-			);
-
-			if (deleteError) {
-				error.value = deleteError.message;
-				throw deleteError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		state.value.widgets = state.value.widgets.filter(
-			(item) => item.id !== widgetId,
+		const { error: deleteError } = await supabase.rpc(
+			"delete_dashboard_widget",
+			{
+				p_widget_id: widgetId,
+			},
 		);
-		persistLocalState();
+
+		if (deleteError) {
+			error.value = deleteError.message;
+			throw deleteError;
+		}
+
+		await loadCouple();
 	}
 
 	async function setWidgetVisible(widgetId: string, visible: boolean) {
-		if (supabase) {
-			const { error: visibleError } = await supabase.rpc("set_widget_visible", {
-				p_widget_id: widgetId,
-				p_visible: visible,
-			});
-
-			if (visibleError) {
-				error.value = visibleError.message;
-				throw visibleError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		applyLocalWidgetUpdate(widgetId, { visible });
+		const { error: visibleError } = await supabase.rpc("set_widget_visible", {
+			p_widget_id: widgetId,
+			p_visible: visible,
+		});
+
+		if (visibleError) {
+			error.value = visibleError.message;
+			throw visibleError;
+		}
+
+		await loadCouple();
 	}
 
 	async function triggerAlert(
@@ -482,60 +395,45 @@ export function useDashboardStore(coupleSlug?: string) {
 	) {
 		const expiresAt = alert.expiresAt ?? nextLocalMidnightIso();
 
-		if (supabase) {
-			const { error: alertError } = await supabase.rpc("trigger_couple_alert", {
-				p_couple_id: alert.coupleId,
-				p_title: alert.title,
-				p_detail: alert.detail,
-				p_severity: alert.severity,
-				p_source: alert.source,
-				p_triggered_by: alert.triggeredBy,
-				p_expires_at: expiresAt,
-				p_triggered_by_partner_id: alert.triggeredByPartnerId ?? null,
-			});
-
-			if (alertError) {
-				error.value = alertError.message;
-				throw alertError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		state.value.alerts.unshift({
-			...alert,
-			id: crypto.randomUUID(),
-			active: true,
-			createdAt: new Date().toISOString(),
-			expiresAt,
+		const { error: alertError } = await supabase.rpc("trigger_couple_alert", {
+			p_couple_id: alert.coupleId,
+			p_title: alert.title,
+			p_detail: alert.detail,
+			p_severity: alert.severity,
+			p_source: alert.source,
+			p_triggered_by: alert.triggeredBy,
+			p_expires_at: expiresAt,
+			p_triggered_by_partner_id: alert.triggeredByPartnerId ?? null,
 		});
-		persistLocalState();
+
+		if (alertError) {
+			error.value = alertError.message;
+			throw alertError;
+		}
+
+		await loadCouple();
 	}
 
 	async function setAlertActive(alertId: string, active: boolean) {
-		if (supabase) {
-			const { error: alertError } = await supabase.rpc("set_alert_active", {
-				p_alert_id: alertId,
-				p_active: active,
-			});
-
-			if (alertError) {
-				error.value = alertError.message;
-				throw alertError;
-			}
-
-			await loadCouple();
-			return;
+		if (!supabase) {
+			throw new Error(t("dashboard.supabaseRequired"));
 		}
 
-		const index = state.value.alerts.findIndex((item) => item.id === alertId);
-		const currentAlert = state.value.alerts[index];
+		const { error: alertError } = await supabase.rpc("set_alert_active", {
+			p_alert_id: alertId,
+			p_active: active,
+		});
 
-		if (index !== -1 && currentAlert) {
-			state.value.alerts[index] = { ...currentAlert, active };
-			persistLocalState();
+		if (alertError) {
+			error.value = alertError.message;
+			throw alertError;
 		}
+
+		await loadCouple();
 	}
 
 	return {
@@ -546,7 +444,6 @@ export function useDashboardStore(coupleSlug?: string) {
 		alerts,
 		loading: readonly(loading),
 		error: readonly(error),
-		isSupabaseConfigured,
 		loadCouple,
 		updateWidget,
 		addWidget,

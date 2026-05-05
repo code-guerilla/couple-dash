@@ -3,9 +3,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
-import { alertTemplates } from '@/data/defaults'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
+import { alertTemplates } from '@/data/alertTemplates'
 import { supabase, type CoupleInviteStatus, type PendingPartnerInvite } from '@/services/supabase'
 import type {
   AlertSeverity,
@@ -141,7 +141,6 @@ async function loadMembership() {
   membershipError.value = null
 
   if (!isSupabaseConfigured || !supabase || !couple.value || !userId.value) {
-    currentPartnerId.value = couple.value?.partners[0]?.id ?? null
     return
   }
 
@@ -183,11 +182,13 @@ async function loadInviteStatus() {
 }
 
 async function loadPrivateEditor() {
-  if (!isSupabaseConfigured || isAuthenticated.value) {
-    await loadCouple()
-    await loadMembership()
-    await loadInviteStatus()
+  if (!isSupabaseConfigured || !isAuthenticated.value) {
+    return
   }
+
+  await loadCouple()
+  await loadMembership()
+  await loadInviteStatus()
 }
 
 async function saveWidget(widget: DashboardWidget) {
@@ -529,6 +530,10 @@ onMounted(() => {
 <template>
   <section v-if="isSupabaseConfigured && initialized && !isAuthenticated" class="mx-auto max-w-md">
     <AuthPanel />
+  </section>
+
+  <section v-else-if="!isSupabaseConfigured" class="mx-auto max-w-md">
+    <UAlert color="warning" variant="soft" :description="t('dashboard.supabaseRequired')" />
   </section>
 
   <section v-else-if="couple" class="mx-auto max-w-3xl space-y-6 pb-10">

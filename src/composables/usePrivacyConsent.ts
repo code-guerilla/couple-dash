@@ -3,7 +3,7 @@ import { readonly, ref } from 'vue'
 export type StorageConsent = 'accepted' | 'rejected'
 
 const consentStorageKey = 'couple-dash-storage-consent'
-const preferenceStorageKeys = ['couple-dash-locale', 'couple-dash-theme', 'couple-dash-state-v1']
+const preferenceStorageKeys = ['couple-dash-locale', 'couple-dash-theme']
 
 function readConsent(): StorageConsent | null {
   if (typeof window === 'undefined') {

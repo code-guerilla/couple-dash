@@ -24,8 +24,9 @@ async function refreshSession() {
   initialized.value = true
 }
 
+void refreshSession()
+
 if (supabase) {
-  void refreshSession()
   supabase.auth.onAuthStateChange((_event, session) => {
     userId.value = session?.user.id ?? null
     userEmail.value = session?.user.email ?? null
@@ -34,7 +35,7 @@ if (supabase) {
 }
 
 export function useSupabaseAuth() {
-  const isAuthenticated = computed(() => !isSupabaseConfigured || Boolean(userId.value))
+  const isAuthenticated = computed(() => Boolean(userId.value))
 
   async function signInWithGoogle(redirectTo = window.location.href) {
     if (!supabase) {

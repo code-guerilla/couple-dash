@@ -3,11 +3,9 @@ import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
-import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { isSupabaseConfigured, supabase, type MyCoupleRow } from '@/services/supabase'
 
-const { couples } = useDashboardStore()
 const { locale, t } = useI18n()
 const { initialized, isAuthenticated } = useSupabaseAuth()
 const myCouples = ref<MyCoupleRow[]>([])
@@ -68,8 +66,15 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
       </p>
     </div>
 
-    <div v-if="isSupabaseConfigured" class="space-y-4">
-      <AuthPanel v-if="initialized && !isAuthenticated" />
+    <div class="space-y-4">
+      <UAlert
+        v-if="!isSupabaseConfigured"
+        color="warning"
+        variant="soft"
+        :description="t('dashboard.supabaseRequired')"
+      />
+
+      <AuthPanel v-else-if="initialized && !isAuthenticated" />
 
       <template v-else-if="isAuthenticated">
         <UAlert v-if="homeError" color="warning" variant="soft" :description="homeError" />
@@ -147,41 +152,6 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
           />
         </section>
       </template>
-    </div>
-
-    <div v-else class="grid gap-4 md:grid-cols-2">
-      <UCard
-        v-for="couple in couples"
-        :key="couple.id"
-        :as="RouterLink"
-        class="transition-transform hover:-translate-y-0.5"
-        :to="{ name: 'display', params: { coupleSlug: couple.slug } }"
-      >
-        <template #header>
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h2 class="text-3xl font-black">{{ couple.name }}</h2>
-              <p class="mt-1 text-base font-normal text-muted">{{ couple.subtitle }}</p>
-            </div>
-            <UBadge color="success" variant="soft">{{ t('home.production') }}</UBadge>
-          </div>
-        </template>
-
-        <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
-          <div class="rounded-md bg-muted p-3 ring ring-default">
-            <p class="text-muted">{{ t('home.wedding') }}</p>
-            <p class="font-bold">
-              {{ new Date(couple.weddingDate).toLocaleDateString(locale) }}
-            </p>
-          </div>
-          <div class="rounded-md bg-muted p-3 ring ring-default">
-            <p class="text-muted">{{ t('home.partners') }}</p>
-            <p class="font-bold">
-              {{ couple.partners.map((partner) => partner.name).join(' + ') }}
-            </p>
-          </div>
-        </div>
-      </UCard>
     </div>
   </section>
 </template>

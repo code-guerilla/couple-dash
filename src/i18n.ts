@@ -25,7 +25,7 @@ export const messages = {
     consent: {
       title: 'Storage preferences',
       description:
-        'This app can store your language, theme, and local demo dashboard settings on this device. No analytics or advertising cookies are used.',
+        'This app can store your language and theme settings on this device. No analytics or advertising cookies are used.',
       accept: 'Save preferences',
       reject: 'Use necessary storage only',
     },
@@ -47,7 +47,7 @@ export const messages = {
         'If Supabase is configured, login, invite, tenant, dashboard, widget, and alert data is processed to provide the private dashboard features. Authentication storage is required for signed-in sessions.',
       storageTitle: 'Cookies and local storage',
       storageText:
-        'The app does not use analytics or advertising cookies. With your consent, it stores language, theme, and local demo dashboard preferences in localStorage. If you reject optional storage, these preferences are not persisted.',
+        'The app does not use analytics or advertising cookies. With your consent, it stores language and theme preferences in localStorage. If you reject optional storage, these preferences are not persisted.',
       thirdPartyTitle: 'Third-party services',
       thirdPartyText:
         'The app avoids external font loading. If Supabase is configured, Supabase acts as the backend service provider for authentication and database features.',
@@ -81,10 +81,11 @@ export const messages = {
     },
     dashboard: {
       unavailable: 'No private dashboard is available for this authenticated session',
+      supabaseRequired:
+        'Supabase must be configured with VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.',
       supabaseLoadFailed: 'Supabase load failed',
       privateSession: 'Private display session',
       protectedRealtime: 'RLS protected realtime',
-      localDemo: 'Local demo',
       relationshipUptime: 'Relationship Uptime',
       since: 'Since {date}',
       daysUntilWedding: 'Days Until Wedding',
@@ -242,7 +243,7 @@ export const messages = {
     consent: {
       title: 'Speichereinstellungen',
       description:
-        'Diese App kann Sprache, Theme und lokale Demo-Dashboard-Einstellungen auf diesem Gerät speichern. Es werden keine Analyse- oder Werbe-Cookies verwendet.',
+        'Diese App kann Sprache und Theme-Einstellungen auf diesem Gerät speichern. Es werden keine Analyse- oder Werbe-Cookies verwendet.',
       accept: 'Einstellungen speichern',
       reject: 'Nur notwendige Speicherung',
     },
@@ -264,7 +265,7 @@ export const messages = {
         'Wenn Supabase konfiguriert ist, werden Login-, Einladungs-, Tenant-, Dashboard-, Widget- und Warnungsdaten verarbeitet, um die privaten Dashboard-Funktionen bereitzustellen. Authentifizierungs-Speicherung ist für angemeldete Sitzungen erforderlich.',
       storageTitle: 'Cookies und lokale Speicherung',
       storageText:
-        'Die App verwendet keine Analyse- oder Werbe-Cookies. Mit deiner Einwilligung speichert sie Sprache, Theme und lokale Demo-Dashboard-Einstellungen im localStorage. Wenn du optionale Speicherung ablehnst, werden diese Einstellungen nicht dauerhaft gespeichert.',
+        'Die App verwendet keine Analyse- oder Werbe-Cookies. Mit deiner Einwilligung speichert sie Sprache und Theme-Einstellungen im localStorage. Wenn du optionale Speicherung ablehnst, werden diese Einstellungen nicht dauerhaft gespeichert.',
       thirdPartyTitle: 'Drittanbieter',
       thirdPartyText:
         'Die App lädt keine externen Schriftarten. Wenn Supabase konfiguriert ist, dient Supabase als Backend-Dienstleister für Authentifizierung und Datenbankfunktionen.',
@@ -301,10 +302,11 @@ export const messages = {
     },
     dashboard: {
       unavailable: 'Für diese authentifizierte Session ist kein privates Dashboard verfügbar',
+      supabaseRequired:
+        'Supabase muss mit VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY konfiguriert sein.',
       supabaseLoadFailed: 'Supabase load failed',
       privateSession: 'Private Display-Session',
       protectedRealtime: 'RLS-protected Realtime',
-      localDemo: 'Local Demo',
       relationshipUptime: 'Relationship Uptime',
       since: 'Seit {date}',
       daysUntilWedding: 'Days until Wedding',
