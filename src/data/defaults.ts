@@ -1,6 +1,18 @@
-import type { Couple, CoupleAlert, DashboardState, DashboardWidget, TimelineEntry } from '@/types'
+import type {
+  AlertSeverity,
+  Couple,
+  CoupleAlert,
+  DashboardState,
+  DashboardWidget,
+  TimelineEntry,
+} from '@/types'
 
 const now = new Date().toISOString()
+const nextMidnight = (() => {
+  const expiresAt = new Date()
+  expiresAt.setHours(24, 0, 0, 0)
+  return expiresAt.toISOString()
+})()
 
 export const defaultCouples: Couple[] = [
   {
@@ -74,6 +86,8 @@ const widget = (
   order,
   tone: 'info',
   visible: true,
+  chartData: [],
+  chartOptions: {},
   updatedAt: now,
   ...options,
 })
@@ -367,6 +381,84 @@ export const defaultWidgets: DashboardWidget[] = [
     },
   ),
   widget(
+    'couple-paul-anna',
+    'relationship-mix',
+    'Woraus die Beziehung besteht',
+    '100%',
+    'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.',
+    18,
+    {
+      visual: 'donut',
+      tone: 'success',
+      chartData: [
+        { label: 'Liebe', value: 40 },
+        { label: 'Kaffee', value: 20 },
+        { label: 'Diskussionen über Essen', value: 25 },
+        { label: 'Gemeinsame Serien', value: 15 },
+      ],
+      chartOptions: {
+        centralLabel: 'Beziehungs-Mix',
+        centralSubLabel: 'wissenschaftlich fragwürdig',
+      },
+    },
+  ),
+  widget(
+    'couple-paul-anna',
+    'discussion-wins',
+    'Gewonnene Diskussionen',
+    '75%',
+    'Beide tun so, als hätten sie gewonnen.',
+    19,
+    {
+      visual: 'donut',
+      tone: 'warning',
+      chartData: [
+        { label: 'Partner A', value: 12 },
+        { label: 'Partner B', value: 13 },
+        { label: 'Beide gewonnen', value: 75 },
+      ],
+      chartOptions: {
+        centralLabel: '75%',
+        centralSubLabel: 'diplomatischer Sieg',
+      },
+    },
+  ),
+  widget(
+    'couple-paul-anna',
+    'relationship-topics',
+    'Top Beziehungsthemen',
+    '87',
+    'Ranking der wichtigsten Haushaltskonferenzen.',
+    20,
+    {
+      visual: 'bar',
+      tone: 'info',
+      chartData: [
+        { label: 'Was essen wir?', value: 87 },
+        { label: 'Wo sind die Schlüssel?', value: 42 },
+        { label: 'Noch eine Folge?', value: 64 },
+      ],
+    },
+  ),
+  widget(
+    'couple-paul-anna',
+    'romance-trend',
+    'Romantik im Zeitverlauf',
+    '100',
+    'Fake Trend, echte Gefühle.',
+    21,
+    {
+      visual: 'line',
+      tone: 'success',
+      chartData: [
+        { label: 'Kennenlernen', value: 80 },
+        { label: 'Erster Urlaub', value: 95 },
+        { label: 'Umzug', value: 62 },
+        { label: 'Hochzeit', value: 100 },
+      ],
+    },
+  ),
+  widget(
     'couple-lina-tom',
     'timeline',
     'Our Timeline',
@@ -430,6 +522,63 @@ export const defaultWidgets: DashboardWidget[] = [
       tone: 'success',
     },
   ),
+  widget(
+    'couple-lina-tom',
+    'relationship-mix',
+    'Woraus die Beziehung besteht',
+    '100%',
+    'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.',
+    6,
+    {
+      visual: 'donut',
+      tone: 'success',
+      chartData: [
+        { label: 'Liebe', value: 40 },
+        { label: 'Kaffee', value: 20 },
+        { label: 'Diskussionen über Essen', value: 25 },
+        { label: 'Gemeinsame Serien', value: 15 },
+      ],
+      chartOptions: {
+        centralLabel: 'Beziehungs-Mix',
+        centralSubLabel: 'wissenschaftlich fragwürdig',
+      },
+    },
+  ),
+  widget(
+    'couple-lina-tom',
+    'relationship-topics',
+    'Top Beziehungsthemen',
+    '87',
+    'Ranking der wichtigsten Haushaltskonferenzen.',
+    7,
+    {
+      visual: 'bar',
+      tone: 'info',
+      chartData: [
+        { label: 'Was essen wir?', value: 87 },
+        { label: 'Wo sind die Schlüssel?', value: 42 },
+        { label: 'Noch eine Folge?', value: 64 },
+      ],
+    },
+  ),
+  widget(
+    'couple-lina-tom',
+    'romance-trend',
+    'Romantik im Zeitverlauf',
+    '100',
+    'Fake Trend, echte Gefühle.',
+    8,
+    {
+      visual: 'line',
+      tone: 'success',
+      chartData: [
+        { label: 'Kennenlernen', value: 80 },
+        { label: 'Erster Urlaub', value: 95 },
+        { label: 'Umzug', value: 62 },
+        { label: 'Hochzeit', value: 100 },
+      ],
+    },
+  ),
 ]
 
 export const defaultAlerts: CoupleAlert[] = [
@@ -442,6 +591,7 @@ export const defaultAlerts: CoupleAlert[] = [
     source: 'system',
     active: true,
     createdAt: now,
+    expiresAt: nextMidnight,
   },
   {
     id: 'alert-anniversary',
@@ -452,6 +602,7 @@ export const defaultAlerts: CoupleAlert[] = [
     source: 'system',
     active: true,
     createdAt: now,
+    expiresAt: nextMidnight,
   },
   {
     id: 'alert-cuddle',
@@ -462,6 +613,7 @@ export const defaultAlerts: CoupleAlert[] = [
     source: 'partner',
     active: true,
     createdAt: now,
+    expiresAt: nextMidnight,
     triggeredBy: 'Anna',
   },
   {
@@ -473,6 +625,7 @@ export const defaultAlerts: CoupleAlert[] = [
     source: 'partner',
     active: true,
     createdAt: now,
+    expiresAt: nextMidnight,
     triggeredBy: 'Paul',
   },
   {
@@ -484,6 +637,7 @@ export const defaultAlerts: CoupleAlert[] = [
     source: 'system',
     active: true,
     createdAt: now,
+    expiresAt: nextMidnight,
   },
 ]
 
@@ -493,13 +647,41 @@ export const defaultState: DashboardState = {
   alerts: defaultAlerts,
 }
 
-export const alertTemplates = [
-  'Snack shortage detected',
-  'Anniversary approaching',
-  'Cuddle maintenance overdue',
-  'Dishwasher loaded incorrectly',
-  'One partner said "nothing" but meant "something"',
-  'Dinner decision timeout',
-  'Blanket ownership dispute',
-  'Remote control failover requested',
+export interface AlertTemplate {
+  id: string
+  partnerName: string
+  partnerIndex: number
+  text: string
+  severity: AlertSeverity
+}
+
+export const alertTemplates: AlertTemplate[] = [
+  {
+    id: 'tom-beer',
+    partnerName: 'Tom',
+    partnerIndex: 0,
+    text: 'benötigt ein Bier 🍺',
+    severity: 'info',
+  },
+  {
+    id: 'lisa-going-out',
+    partnerName: 'Lisa',
+    partnerIndex: 1,
+    text: 'Möchte mal wieder ausgehen 💃',
+    severity: 'info',
+  },
+  {
+    id: 'lisa-dinner',
+    partnerName: 'Lisa',
+    partnerIndex: 1,
+    text: 'Möchte mal wieder Essen gehen 🍕',
+    severity: 'info',
+  },
+  {
+    id: 'tom-beach',
+    partnerName: 'Tom',
+    partnerIndex: 0,
+    text: 'Braucht Strand 🏖️',
+    severity: 'info',
+  },
 ]

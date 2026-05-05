@@ -3,7 +3,14 @@ import { defaultState } from '@/data/defaults'
 import { i18n } from '@/i18n'
 import { canStorePreferences } from '@/composables/usePrivacyConsent'
 import { isSupabaseConfigured, supabase } from '@/services/supabase'
-import type { CoupleAlert, DashboardState, DashboardWidget, TimelineEntry } from '@/types'
+import type {
+  ChartDataPoint,
+  ChartOptions,
+  CoupleAlert,
+  DashboardState,
+  DashboardWidget,
+  TimelineEntry,
+} from '@/types'
 
 const storageKey = 'couple-dash-state-v1'
 const channelName = 'couple-dash-realtime'
@@ -13,8 +20,15 @@ const state = ref<DashboardState>(
 )
 const loading = ref(false)
 const error = ref<string | null>(null)
+const currentTime = ref(Date.now())
 const broadcast = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(channelName)
 let activeSubscription: { unsubscribe: () => void } | null = null
+
+if (typeof window !== 'undefined') {
+  window.setInterval(() => {
+    currentTime.value = Date.now()
+  }, 60_000)
+}
 
 function t(key: string) {
   return i18n.global.t(key)
@@ -42,6 +56,20 @@ function loadLocalState(): DashboardState {
   } catch {
     return cloneDefaults()
   }
+}
+
+function nextLocalMidnightIso() {
+  const expiresAt = new Date()
+  expiresAt.setHours(24, 0, 0, 0)
+  return expiresAt.toISOString()
+}
+
+function isAlertVisible(alert: CoupleAlert) {
+  if (!alert.active) {
+    return false
+  }
+
+  return !alert.expiresAt || Date.parse(alert.expiresAt) > currentTime.value
 }
 
 function persistLocalState() {
@@ -77,6 +105,34 @@ function mapTimelineEntries(value: unknown): TimelineEntry[] {
   })
 }
 
+function mapChartData(value: unknown): ChartDataPoint[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((entry) => {
+    const item = entry as Partial<ChartDataPoint>
+
+    return {
+      label: String(item.label ?? ''),
+      value: Number(item.value ?? 0),
+    }
+  })
+}
+
+function mapChartOptions(value: unknown): ChartOptions {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const options = value as Partial<ChartOptions>
+
+  return {
+    centralLabel: options.centralLabel ? String(options.centralLabel) : undefined,
+    centralSubLabel: options.centralSubLabel ? String(options.centralSubLabel) : undefined,
+  }
+}
+
 function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
   return {
     id: String(row.id),
@@ -95,6 +151,8 @@ function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
     tone: String(row.tone ?? 'info') as DashboardWidget['tone'],
     visible: Boolean(row.visible ?? true),
     timelineEntries: mapTimelineEntries(row.timeline_entries),
+    chartData: mapChartData(row.chart_data),
+    chartOptions: mapChartOptions(row.chart_options),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
   }
 }
@@ -109,6 +167,7 @@ function mapAlertFromRow(row: Record<string, unknown>): CoupleAlert {
     source: row.source === 'partner' ? 'partner' : 'system',
     active: Boolean(row.active),
     createdAt: String(row.created_at ?? new Date().toISOString()),
+    expiresAt: row.expires_at ? String(row.expires_at) : undefined,
     triggeredBy: row.triggered_by ? String(row.triggered_by) : undefined,
   }
 }
@@ -249,7 +308,7 @@ export function useDashboardStore(coupleSlug?: string) {
   const visibleWidgets = computed(() => widgets.value.filter((item) => item.visible))
   const alerts = computed(() =>
     state.value.alerts
-      .filter((item) => item.coupleId === couple.value?.id && item.active)
+      .filter((item) => item.coupleId === couple.value?.id && isAlertVisible(item))
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
   )
 
@@ -270,14 +329,16 @@ export function useDashboardStore(coupleSlug?: string) {
     if (supabase) {
       const { error: updateError } = await supabase.rpc('update_dashboard_widget', {
         p_widget_id: widgetId,
-        p_label: patch.label,
-        p_value: patch.value,
-        p_unit: patch.unit,
-        p_detail: patch.detail,
-        p_visual: patch.visual,
-        p_tone: patch.tone,
-        p_numeric_value: patch.numericValue,
-        p_timeline_entries: patch.timelineEntries,
+        p_label: patch.label ?? null,
+        p_value: patch.value ?? null,
+        p_unit: patch.unit ?? null,
+        p_detail: patch.detail ?? null,
+        p_visual: patch.visual ?? null,
+        p_tone: patch.tone ?? null,
+        p_numeric_value: patch.numericValue ?? null,
+        p_timeline_entries: patch.timelineEntries ?? null,
+        p_chart_data: patch.chartData ?? null,
+        p_chart_options: patch.chartOptions ?? null,
       })
 
       if (updateError) {
@@ -290,6 +351,44 @@ export function useDashboardStore(coupleSlug?: string) {
     }
 
     applyLocalWidgetUpdate(widgetId, patch)
+  }
+
+  async function addWidget(widget: Omit<DashboardWidget, 'id' | 'updatedAt'>) {
+    if (supabase) {
+      const { error: addError } = await supabase.rpc('add_dashboard_widget', {
+        p_couple_id: widget.coupleId,
+        p_label: widget.label,
+        p_value: widget.value ?? '',
+        p_unit: widget.unit ?? null,
+        p_detail: widget.detail ?? '',
+        p_scope: widget.scope,
+        p_person_id: widget.personId ?? null,
+        p_visual: widget.visual,
+        p_sort_order: widget.order,
+        p_min_value: widget.min ?? null,
+        p_max_value: widget.max ?? null,
+        p_numeric_value: widget.numericValue ?? null,
+        p_tone: widget.tone,
+        p_timeline_entries: widget.timelineEntries ?? [],
+        p_chart_data: widget.chartData,
+        p_chart_options: widget.chartOptions,
+      })
+
+      if (addError) {
+        error.value = addError.message
+        throw addError
+      }
+
+      await loadCouple()
+      return
+    }
+
+    state.value.widgets.push({
+      ...widget,
+      id: crypto.randomUUID(),
+      updatedAt: new Date().toISOString(),
+    })
+    persistLocalState()
   }
 
   async function setWidgetVisible(widgetId: string, visible: boolean) {
@@ -312,6 +411,8 @@ export function useDashboardStore(coupleSlug?: string) {
   }
 
   async function triggerAlert(alert: Omit<CoupleAlert, 'id' | 'createdAt' | 'active'>) {
+    const expiresAt = alert.expiresAt ?? nextLocalMidnightIso()
+
     if (supabase) {
       const { error: alertError } = await supabase.rpc('trigger_couple_alert', {
         p_couple_id: alert.coupleId,
@@ -320,6 +421,7 @@ export function useDashboardStore(coupleSlug?: string) {
         p_severity: alert.severity,
         p_source: alert.source,
         p_triggered_by: alert.triggeredBy,
+        p_expires_at: expiresAt,
       })
 
       if (alertError) {
@@ -336,6 +438,7 @@ export function useDashboardStore(coupleSlug?: string) {
       id: crypto.randomUUID(),
       active: true,
       createdAt: new Date().toISOString(),
+      expiresAt,
     })
     persistLocalState()
   }
@@ -376,6 +479,7 @@ export function useDashboardStore(coupleSlug?: string) {
     isSupabaseConfigured,
     loadCouple,
     updateWidget,
+    addWidget,
     setWidgetVisible,
     triggerAlert,
     setAlertActive,

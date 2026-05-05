@@ -8,9 +8,9 @@ const storageKey = 'couple-dash-locale'
 export const messages = {
   en: {
     app: {
-      brand: 'Marriage KPI Dashboard',
-      brandPrefix: 'Marriage KPI ',
-      brandSuffix: 'Dashboard',
+      brand: 'CoupleDash',
+      brandPrefix: 'CoupleDash',
+      brandSuffix: '',
     },
     nav: {
       home: 'Home',
@@ -37,7 +37,7 @@ export const messages = {
       email: 'Email',
       privacyTitle: 'Privacy Policy',
       privacyIntro:
-        'This page describes which data is processed when using Marriage KPI Dashboard. It is a technical baseline for a privacy-friendly setup and should be reviewed legally before public launch.',
+        'This page describes which data is processed when using CoupleDash. It is a technical baseline for a privacy-friendly setup and should be reviewed legally before public launch.',
       controllerTitle: 'Controller',
       accessDataTitle: 'Access data',
       accessDataText:
@@ -59,7 +59,7 @@ export const messages = {
     },
     home: {
       badge: 'Multi tenant couple dashboards',
-      title: 'Marriage KPI Dashboard',
+      title: 'CoupleDash',
       description:
         'Private couple dashboards are loaded only after a linked partner or app admin account signs in.',
       adminTitle: 'Admin',
@@ -145,7 +145,7 @@ export const messages = {
         stat: 'Stat',
         progress: 'Progress',
         radial: 'Radial',
-        doughnut: 'Doughnut',
+        donut: 'Donut',
         bar: 'Bar',
         line: 'Line',
         memory: 'Memory',
@@ -158,6 +158,9 @@ export const messages = {
         error: 'Error',
       },
       triggerAlert: 'Trigger Alert',
+      customAlert: 'Custom alert',
+      customAlertPlaceholder: 'needs a beer 🍺',
+      saveCustomAlert: 'Save custom alert',
       alertTemplates: {
         snackShortage: 'Snack shortage detected',
         anniversary: 'Anniversary approaching',
@@ -186,6 +189,14 @@ export const messages = {
       hidden: 'hidden',
       save: 'Save',
       numericValue: 'Numeric value',
+      chartDesigner: 'Chart Designer',
+      chartDesignerDescription: 'Create a small Donut, Bar, or Line chart for the shared dashboard.',
+      createChart: 'Create chart',
+      addChartRow: 'Add chart row',
+      chartLabel: 'Label',
+      chartNewLabel: 'New category',
+      chartCentralLabel: 'Center label',
+      chartCentralSubLabel: 'Center subtitle',
       alerts: 'Alerts',
       deactivate: 'Deactivate',
       pendingInviteTitle: 'Invite missing partner',
@@ -209,9 +220,9 @@ export const messages = {
   },
   de: {
     app: {
-      brand: 'Ehe-KPI Dashboard',
-      brandPrefix: 'Ehe-KPI ',
-      brandSuffix: 'Dashboard',
+      brand: 'CoupleDash',
+      brandPrefix: 'CoupleDash',
+      brandSuffix: '',
     },
     nav: {
       home: 'Start',
@@ -238,7 +249,7 @@ export const messages = {
       email: 'E-Mail',
       privacyTitle: 'Datenschutzerklärung',
       privacyIntro:
-        'Diese Seite beschreibt, welche Daten bei der Nutzung des Ehe-KPI Dashboards verarbeitet werden. Sie ist eine technische Grundlage für einen datenschutzfreundlichen Betrieb und sollte vor einem öffentlichen Launch rechtlich geprüft werden.',
+        'Diese Seite beschreibt, welche Daten bei der Nutzung von CoupleDash verarbeitet werden. Sie ist eine technische Grundlage für einen datenschutzfreundlichen Betrieb und sollte vor einem öffentlichen Launch rechtlich geprüft werden.',
       controllerTitle: 'Verantwortlicher',
       accessDataTitle: 'Zugriffsdaten',
       accessDataText:
@@ -260,7 +271,7 @@ export const messages = {
     },
     home: {
       badge: 'Multi-Tenant Dashboards für Paare',
-      title: 'Ehe-KPI Dashboard',
+      title: 'CoupleDash',
       description:
         'Private Paar-Dashboards werden erst geladen, wenn ein verknüpftes Partner- oder Admin-Konto angemeldet ist.',
       adminTitle: 'Admin',
@@ -351,7 +362,7 @@ export const messages = {
         stat: 'Stat',
         progress: 'Progress',
         radial: 'Radial',
-        doughnut: 'Doughnut',
+        donut: 'Donut',
         bar: 'Bar',
         line: 'Line',
         memory: 'Memory',
@@ -364,6 +375,9 @@ export const messages = {
         error: 'Error',
       },
       triggerAlert: 'Alert auslösen',
+      customAlert: 'Custom Alert',
+      customAlertPlaceholder: 'braucht ein Bier 🍺',
+      saveCustomAlert: 'Custom Alert speichern',
       alertTemplates: {
         snackShortage: 'Snackmangel erkannt',
         anniversary: 'Jahrestag naht',
@@ -392,6 +406,15 @@ export const messages = {
       hidden: 'ausgeblendet',
       save: 'Speichern',
       numericValue: 'Numeric Value',
+      chartDesigner: 'Chart Designer',
+      chartDesignerDescription:
+        'Erstelle einen kleinen Donut-, Bar- oder Line-Chart für das gemeinsame Dashboard.',
+      createChart: 'Chart erstellen',
+      addChartRow: 'Chart-Zeile hinzufügen',
+      chartLabel: 'Label',
+      chartNewLabel: 'Neue Kategorie',
+      chartCentralLabel: 'Center Label',
+      chartCentralSubLabel: 'Center Subtitle',
       alerts: 'Alerts',
       deactivate: 'Deaktivieren',
       pendingInviteTitle: 'Fehlenden Partner einladen',

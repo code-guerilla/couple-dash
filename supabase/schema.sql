@@ -49,7 +49,7 @@ create table if not exists public.dashboard_widget (
   detail text not null default '',
   scope text not null check (scope in ('shared', 'person')),
   person_id uuid references public.partner(id) on delete cascade,
-  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory', 'timeline')),
+  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline')),
   sort_order integer not null default 0,
   min_value numeric,
   max_value numeric,
@@ -57,6 +57,8 @@ create table if not exists public.dashboard_widget (
   tone text not null default 'info' check (tone in ('info', 'success', 'warning', 'error')),
   visible boolean not null default true,
   timeline_entries jsonb not null default '[]'::jsonb,
+  chart_data jsonb not null default '[]'::jsonb,
+  chart_options jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint dashboard_widget_scope_person_check check (
     (scope = 'shared' and person_id is null)
@@ -74,7 +76,8 @@ create table if not exists public.couple_alert (
   source text not null default 'system' check (source in ('system', 'partner')),
   active boolean not null default true,
   triggered_by text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day')
 );
 
 alter table public.couple add column if not exists created_by uuid references auth.users(id);
@@ -82,6 +85,9 @@ alter table public.partner add column if not exists user_id uuid references auth
 alter table public.partner add column if not exists invite_token_hash text;
 alter table public.dashboard_widget add column if not exists visible boolean not null default true;
 alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
+alter table public.dashboard_widget add column if not exists chart_data jsonb not null default '[]'::jsonb;
+alter table public.dashboard_widget add column if not exists chart_options jsonb not null default '{}'::jsonb;
+alter table public.couple_alert add column if not exists expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day');
 alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
 
 do $$
@@ -114,7 +120,7 @@ end $$;
 
 alter table public.dashboard_widget
   add constraint dashboard_widget_visual_check
-  check (visual in ('stat', 'progress', 'radial', 'doughnut', 'bar', 'line', 'memory', 'timeline'));
+  check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline'));
 
 do $$
 begin
@@ -539,7 +545,9 @@ begin
     max_value,
     numeric_value,
     tone,
-    timeline_entries
+    timeline_entries,
+    chart_data,
+    chart_options
   ) values
     (
       new_couple_id,
@@ -560,12 +568,16 @@ begin
         jsonb_build_object('id', 'fur-baby', 'date', p_anniversary_date, 'title', 'Fur-Baby Date', 'description', 'The day the household got cuter.', 'icon', 'i-lucide-paw-print'),
         jsonb_build_object('id', 'engagement', 'date', p_anniversary_date, 'title', 'The Engagement', 'description', 'A yes worth keeping visible.', 'icon', 'i-lucide-gem'),
         jsonb_build_object('id', 'wedding', 'date', p_wedding_date, 'title', 'The Wedding', 'description', 'The big day on the shared calendar.', 'icon', 'i-lucide-church')
-      )
+      ),
+      '[]'::jsonb,
+      '{}'::jsonb
     ),
-    (new_couple_id, 'Days Together', '0', 'Update this together from the partner console.', 'shared', null, 'stat', 2, null, null, 'info', '[]'::jsonb),
-    (new_couple_id, 'Wedding Countdown', 'Set', 'Keep the next milestone visible on the dashboard.', 'shared', null, 'stat', 3, null, null, 'success', '[]'::jsonb),
-    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 4, null, null, 'info', '[]'::jsonb),
-    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 5, null, null, 'info', '[]'::jsonb);
+    (new_couple_id, 'Woraus die Beziehung besteht', '100%', 'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.', 'shared', null, 'donut', 2, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Liebe', 'value', 40), jsonb_build_object('label', 'Kaffee', 'value', 20), jsonb_build_object('label', 'Diskussionen über Essen', 'value', 25), jsonb_build_object('label', 'Gemeinsame Serien', 'value', 15)), jsonb_build_object('centralLabel', 'Beziehungs-Mix', 'centralSubLabel', 'wissenschaftlich fragwürdig')),
+    (new_couple_id, 'Gewonnene Diskussionen', '75%', 'Beide tun so, als hätten sie gewonnen.', 'shared', null, 'donut', 3, null, null, 'warning', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Partner A', 'value', 12), jsonb_build_object('label', 'Partner B', 'value', 13), jsonb_build_object('label', 'Beide gewonnen', 'value', 75)), jsonb_build_object('centralLabel', '75%', 'centralSubLabel', 'diplomatischer Sieg')),
+    (new_couple_id, 'Top Beziehungsthemen', '87', 'Ranking der wichtigsten Haushaltskonferenzen.', 'shared', null, 'bar', 4, null, null, 'info', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Was essen wir?', 'value', 87), jsonb_build_object('label', 'Wo sind die Schlüssel?', 'value', 42), jsonb_build_object('label', 'Noch eine Folge?', 'value', 64)), '{}'::jsonb),
+    (new_couple_id, 'Romantik im Zeitverlauf', '100', 'Fake Trend, echte Gefühle.', 'shared', null, 'line', 5, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Kennenlernen', 'value', 80), jsonb_build_object('label', 'Erster Urlaub', 'value', 95), jsonb_build_object('label', 'Umzug', 'value', 62), jsonb_build_object('label', 'Hochzeit', 'value', 100)), '{}'::jsonb),
+    (new_couple_id, trim(p_partner_a_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_a_name) || '.', 'person', partner_a_id, 'stat', 6, null, null, 'info', '[]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+    (new_couple_id, trim(p_partner_b_name) || ' Check-in', 'Ready', 'Personal metric for ' || trim(p_partner_b_name) || '.', 'person', partner_b_id, 'stat', 7, null, null, 'info', '[]'::jsonb, '[]'::jsonb, '{}'::jsonb);
 
   insert into public.couple_alert (couple_id, title, detail, severity, source)
   values (
@@ -792,16 +804,21 @@ begin
 end;
 $$;
 
+drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb);
+drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb);
+
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
-  p_label text,
-  p_value text,
-  p_unit text,
-  p_detail text,
-  p_visual text,
-  p_tone text,
-  p_numeric_value numeric,
-  p_timeline_entries jsonb default null
+  p_label text default null,
+  p_value text default null,
+  p_unit text default null,
+  p_detail text default null,
+  p_visual text default null,
+  p_tone text default null,
+  p_numeric_value numeric default null,
+  p_timeline_entries jsonb default null,
+  p_chart_data jsonb default null,
+  p_chart_options jsonb default null
 ) returns void
 language plpgsql
 security definer
@@ -838,25 +855,33 @@ begin
         tone = coalesce(p_tone, tone),
         numeric_value = p_numeric_value,
         timeline_entries = coalesce(p_timeline_entries, timeline_entries),
+        chart_data = coalesce(p_chart_data, chart_data),
+        chart_options = coalesce(p_chart_options, chart_options),
         updated_at = now()
   where id = p_widget_id;
 end;
 $$;
 
+drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text);
+drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
+
 create or replace function public.add_dashboard_widget(
   p_couple_id uuid,
   p_label text,
-  p_value text,
-  p_unit text,
-  p_detail text,
-  p_scope text,
-  p_person_id uuid,
-  p_visual text,
-  p_sort_order integer,
-  p_min_value numeric,
-  p_max_value numeric,
-  p_numeric_value numeric,
-  p_tone text
+  p_value text default '',
+  p_unit text default null,
+  p_detail text default '',
+  p_scope text default 'shared',
+  p_person_id uuid default null,
+  p_visual text default 'stat',
+  p_sort_order integer default 0,
+  p_min_value numeric default null,
+  p_max_value numeric default null,
+  p_numeric_value numeric default null,
+  p_tone text default 'info',
+  p_timeline_entries jsonb default null,
+  p_chart_data jsonb default null,
+  p_chart_options jsonb default null
 ) returns uuid
 language plpgsql
 security definer
@@ -892,7 +917,10 @@ begin
     min_value,
     max_value,
     numeric_value,
-    tone
+    tone,
+    timeline_entries,
+    chart_data,
+    chart_options
   ) values (
     p_couple_id,
     p_label,
@@ -906,7 +934,10 @@ begin
     p_min_value,
     p_max_value,
     p_numeric_value,
-    coalesce(p_tone, 'info')
+    coalesce(p_tone, 'info'),
+    coalesce(p_timeline_entries, '[]'::jsonb),
+    coalesce(p_chart_data, '[]'::jsonb),
+    coalesce(p_chart_options, '{}'::jsonb)
   )
   returning id into new_id;
 
@@ -977,13 +1008,16 @@ begin
 end;
 $$;
 
+drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text);
+
 create or replace function public.trigger_couple_alert(
   p_couple_id uuid,
   p_title text,
   p_detail text,
   p_severity text,
   p_source text default 'partner',
-  p_triggered_by text default null
+  p_triggered_by text default null,
+  p_expires_at timestamptz default null
 ) returns uuid
 language plpgsql
 security definer
@@ -1001,14 +1035,15 @@ begin
     raise exception 'Not allowed';
   end if;
 
-  insert into public.couple_alert (couple_id, title, detail, severity, source, triggered_by)
+  insert into public.couple_alert (couple_id, title, detail, severity, source, triggered_by, expires_at)
   values (
     p_couple_id,
     p_title,
     coalesce(p_detail, ''),
     coalesce(p_severity, 'info'),
     next_source,
-    p_triggered_by
+    p_triggered_by,
+    coalesce(p_expires_at, date_trunc('day', now()) + interval '1 day')
   )
   returning id into new_id;
 
@@ -1173,10 +1208,11 @@ grant execute on function public.admin_get_tenant(uuid) to authenticated;
 grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text) to authenticated;
 grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
 grant execute on function public.admin_delete_tenant(uuid) to authenticated;
-grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb) to authenticated;
+grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb) to authenticated;
+grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb) to authenticated;
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
 grant execute on function public.set_alert_active(uuid, boolean) to authenticated;
-grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text) to authenticated;
+grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz) to authenticated;
 
 do $$
 begin

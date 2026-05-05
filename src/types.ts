@@ -4,7 +4,7 @@ export type WidgetVisual =
   | 'stat'
   | 'progress'
   | 'radial'
-  | 'doughnut'
+  | 'donut'
   | 'bar'
   | 'line'
   | 'memory'
@@ -39,6 +39,16 @@ export interface TimelineEntry {
   icon: string
 }
 
+export interface ChartDataPoint {
+  label: string
+  value: number
+}
+
+export interface ChartOptions {
+  centralLabel?: string
+  centralSubLabel?: string
+}
+
 export interface DashboardWidget {
   id: string
   coupleId: string
@@ -56,6 +66,8 @@ export interface DashboardWidget {
   tone: AlertSeverity
   visible: boolean
   timelineEntries?: TimelineEntry[]
+  chartData: ChartDataPoint[]
+  chartOptions: ChartOptions
   updatedAt: string
 }
 
@@ -68,6 +80,7 @@ export interface CoupleAlert {
   source: 'system' | 'partner'
   active: boolean
   createdAt: string
+  expiresAt?: string
   triggeredBy?: string
 }
 
