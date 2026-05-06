@@ -35,6 +35,7 @@ const {
   alerts,
   error,
   loadCouple,
+  updateCoupleSettings,
   updateWidget,
   updatePartnerHungerLevel,
   setWidgetVisible,
@@ -55,8 +56,18 @@ const uploadingAvatar = ref(false)
 const alertTemplateDrafts = ref<AlertTemplateDraft[]>([])
 const editingAlertTemplateId = ref<string | null>(null)
 const alertTemplateEditTitle = ref('')
+const settingsForm = ref({
+  relationshipStart: '',
+  weddingDate: '',
+  choreTurnPartnerId: null as string | null,
+})
+const savingSettings = ref(false)
+const settingsError = ref<string | null>(null)
 const partner = computed(() =>
   couple.value?.partners.find((item) => item.id === currentPartnerId.value),
+)
+const selectedChorePartner = computed(() =>
+  couple.value?.partners.find((item) => item.id === settingsForm.value.choreTurnPartnerId),
 )
 const pendingPartnerName = computed(() => inviteStatus.value?.pending_partner_name ?? null)
 const pendingInviteUrl = computed(() => {
@@ -111,6 +122,47 @@ const editAccordionItems = computed(() => [
     value: 'alerts',
   },
 ])
+
+function dateInputValue(value: string) {
+  return value.slice(0, 10)
+}
+
+function syncSettingsForm() {
+  if (!couple.value) {
+    return
+  }
+
+  settingsForm.value = {
+    relationshipStart: dateInputValue(couple.value.relationshipStart),
+    weddingDate: dateInputValue(couple.value.weddingDate),
+    choreTurnPartnerId: couple.value.choreTurnPartnerId ?? null,
+  }
+}
+
+async function saveSettings() {
+  settingsError.value = null
+
+  if (!settingsForm.value.relationshipStart || !settingsForm.value.weddingDate) {
+    settingsError.value = t('edit.settingsDateRequired')
+    return
+  }
+
+  savingSettings.value = true
+
+  try {
+    await updateCoupleSettings(settingsForm.value)
+  } catch (error) {
+    settingsError.value = error instanceof Error ? error.message : t('edit.settingsSaveFailed')
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+async function toggleChorePartner(partnerId: string) {
+  settingsForm.value.choreTurnPartnerId =
+    settingsForm.value.choreTurnPartnerId === partnerId ? null : partnerId
+  await saveSettings()
+}
 async function loadMembership() {
   currentPartnerId.value = null
   membershipError.value = null
@@ -476,6 +528,7 @@ async function copyPendingInvite() {
 
 watch(userId, () => void loadPrivateEditor())
 watch([coupleSlug, alertTemplateOwnerKey], loadAlertTemplates)
+watch(couple, syncSettingsForm)
 
 onMounted(() => {
   void loadPrivateEditor().then(loadAlertTemplates)
@@ -598,9 +651,70 @@ onMounted(() => {
       </div>
     </UCard>
 
+    <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-5' }">
+      <form class="grid gap-4" @submit.prevent="saveSettings">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-black">{{ t('edit.remoteSettings') }}</h2>
+            <p class="text-sm text-muted">{{ t('edit.remoteSettingsDescription') }}</p>
+          </div>
+          <UButton
+            icon="i-lucide-save"
+            :label="t('edit.save')"
+            :loading="savingSettings"
+            type="submit"
+          />
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-2">
+          <UFormField :label="t('edit.weddingDate')" required>
+            <UInput v-model="settingsForm.weddingDate" class="w-full" required type="date" />
+          </UFormField>
+          <UFormField :label="t('edit.sharedMemoryStart')" required>
+            <UInput
+              v-model="settingsForm.relationshipStart"
+              class="w-full"
+              required
+              type="date"
+            />
+          </UFormField>
+        </div>
+
+        <div class="grid gap-3">
+          <div>
+            <h3 class="text-base font-black">{{ t('edit.coffeeTurnTitle') }}</h3>
+            <p class="text-sm text-muted">
+              {{ selectedChorePartner?.name ?? t('edit.noCoffeePartner') }}
+            </p>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <UButton
+              v-for="item in couple.partners"
+              :key="item.id"
+              class="justify-center"
+              :color="settingsForm.choreTurnPartnerId === item.id ? 'primary' : 'neutral'"
+              :icon="
+                settingsForm.choreTurnPartnerId === item.id
+                  ? 'i-lucide-toggle-right'
+                  : 'i-lucide-toggle-left'
+              "
+              :label="item.name"
+              :variant="settingsForm.choreTurnPartnerId === item.id ? 'solid' : 'outline'"
+              type="button"
+              @click="toggleChorePartner(item.id)"
+            />
+          </div>
+        </div>
+
+        <UAlert v-if="settingsError" color="warning" variant="soft" :description="settingsError" />
+      </form>
+    </UCard>
+
     <PartnerHungerLevelPanel
       :partners="couple.partners"
       :update-hunger-level="updatePartnerHungerLevel"
+      :title="t('hunger.title')"
+      :description="t('hunger.description')"
     />
 
     <div class="grid gap-3 sm:grid-cols-2">

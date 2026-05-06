@@ -97,6 +97,10 @@ const createdLinks = computed(() => {
 })
 const pageTitle = computed(() => selectedTenant.value?.name ?? text.title)
 
+function dateInputValue(value: string) {
+  return value.slice(0, 10)
+}
+
 function fillEditForm(tenant: AdminTenantDetail) {
   const [partnerA, partnerB] = tenant.partners
 
@@ -105,7 +109,7 @@ function fillEditForm(tenant: AdminTenantDetail) {
   editForm.slug = tenant.slug
   editForm.subtitle = tenant.subtitle ?? ''
   editForm.relationshipStart = tenant.relationship_start
-  editForm.weddingDate = tenant.wedding_date
+  editForm.weddingDate = dateInputValue(tenant.wedding_date)
   editForm.partnerAId = partnerA?.id ?? ''
   editForm.partnerAName = partnerA?.name ?? ''
   editForm.partnerASlug = partnerA?.slug ?? ''

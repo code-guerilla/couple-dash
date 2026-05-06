@@ -8,23 +8,24 @@ interface HungerLevelOption {
 }
 
 const hungerLevelValues: HungerLevelValue[] = [
-  'full',
-  'snack',
-  'getting-hungry',
-  'need-food',
-  'starving',
-  'critical',
+  'Voll motiviert - Lass uns Ausgehen',
+  'Kuschelbedürftig',
+  'Hangry',
+  'Im Tunnel',
+  'Pause benötigt - Sofazeit',
 ]
 
 const genericOptions: HungerLevelOption[] = [
-  { value: 'full', label: '😊 satt & friedlich' },
-  { value: 'snack', label: '🍪 hätte nichts gegen einen Snack' },
-  { value: 'getting-hungry', label: '🥪 Hunger meldet sich' },
-  { value: 'need-food', label: '🍕 bitte sofort etwas zum Essen' },
-  { value: 'starving', label: '😵 verhungert gerade' },
-  { value: 'critical', label: '🔥 kritischer Zustand: Essen sofort finden' },
+  {
+    value: 'Voll motiviert - Lass uns Ausgehen',
+    label: 'Voll motiviert - Lass uns Ausgehen',
+  },
+  { value: 'Kuschelbedürftig', label: 'Kuschelbedürftig' },
+  { value: 'Hangry', label: 'Hangry' },
+  { value: 'Im Tunnel', label: 'Im Tunnel' },
+  { value: 'Pause benötigt - Sofazeit', label: 'Pause benötigt - Sofazeit' },
 ]
-const fallbackHungerLevelLabel = '😊 satt & friedlich'
+const fallbackHungerLevelLabel = 'Voll motiviert - Lass uns Ausgehen'
 
 export function isHungerLevelValue(value: unknown): value is HungerLevelValue {
   return hungerLevelValues.includes(value as HungerLevelValue)

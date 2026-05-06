@@ -3,12 +3,11 @@ export type WidgetVisual = 'stat' | 'progress' | 'radial' | 'memory' | 'timeline
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 
 export type HungerLevelValue =
-  | 'full'
-  | 'snack'
-  | 'getting-hungry'
-  | 'need-food'
-  | 'starving'
-  | 'critical'
+  | 'Voll motiviert - Lass uns Ausgehen'
+  | 'Kuschelbedürftig'
+  | 'Hangry'
+  | 'Im Tunnel'
+  | 'Pause benötigt - Sofazeit'
 
 export interface Partner {
   id: string
@@ -29,6 +28,7 @@ export interface Couple {
   subtitle: string
   relationshipStart: string
   weddingDate: string
+  choreTurnPartnerId?: string
   partners: Partner[]
 }
 

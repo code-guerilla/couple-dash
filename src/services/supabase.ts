@@ -10,6 +10,7 @@ export interface AdminTenantRow {
   subtitle: string
   relationship_start: string
   wedding_date: string
+  chore_turn_partner_id: string | null
   partner_count: number | string
   accepted_partner_count: number | string
   widget_count: number | string
@@ -44,6 +45,7 @@ export interface AdminTenantDetail {
   subtitle: string
   relationship_start: string
   wedding_date: string
+  chore_turn_partner_id: string | null
   partners: AdminTenantPartner[]
 }
 
@@ -54,6 +56,7 @@ export interface MyCoupleRow {
   subtitle: string
   relationship_start: string
   wedding_date: string
+  chore_turn_partner_id: string | null
   partner_count: number | string
   accepted_partner_count: number | string
 }

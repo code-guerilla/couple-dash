@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
-import MetricTile from '@/components/MetricTile.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { hungerLevelLabelForPartner } from '@/data/hungerLevels'
+import type { Partner } from '@/types'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -19,35 +19,79 @@ const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
 const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
   coupleSlug.value,
 )
+const now = ref(Date.now())
+let clockInterval: number | undefined
 
-const sharedWidgets = computed(() =>
-  visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'),
+const timelineWidget = computed(() =>
+  visibleWidgets.value.find((widget) => widget.visual === 'timeline'),
 )
-const timelineWidgets = computed(() =>
-  visibleWidgets.value.filter((widget) => widget.visual === 'timeline'),
+
+const firstPartner = computed(() => couple.value?.partners[0])
+const secondPartner = computed(() => couple.value?.partners[1])
+const choreTurnPartner = computed(() =>
+  couple.value?.partners.find((partner) => partner.id === couple.value?.choreTurnPartnerId),
 )
-
-const daysUntilWedding = computed(() => {
-  if (!couple.value) {
-    return 0
-  }
-
-  const today = new Date()
-  const wedding = new Date(couple.value.weddingDate)
-  return Math.max(0, Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000))
-})
 
 const relationshipUptime = computed(() => {
   if (!couple.value) {
-    return '0d'
+    return '0 Jahre 0 Tage 0 Std 0 Min'
   }
 
   const start = new Date(couple.value.relationshipStart)
-  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / 86_400_000))
-  const years = Math.floor(days / 365)
-  const restDays = days % 365
-  return `${years}y ${restDays}d`
+  let seconds = Math.max(0, Math.floor((now.value - start.getTime()) / 1000))
+  const years = Math.floor(seconds / 31_536_000)
+  seconds %= 31_536_000
+  const days = Math.floor(seconds / 86_400)
+  seconds %= 86_400
+  const hours = Math.floor(seconds / 3600)
+  seconds %= 3600
+  const minutes = Math.floor(seconds / 60)
+  seconds %= 60
+
+  return `${years} Jahre ${days} Tage ${hours} Std ${minutes} Min`
 })
+
+const weddingCountdown = computed(() => {
+  if (!couple.value) {
+    return {
+      label: 'Seit dem Ja-Wort:',
+      value: '0 Tage 0 Std 0 Min',
+      date: '',
+      isFuture: false,
+    }
+  }
+
+  const wedding = new Date(couple.value.weddingDate)
+  const diff = wedding.getTime() - now.value
+  const absoluteMs = Math.abs(diff)
+  const totalMinutes = Math.floor(absoluteMs / 60_000)
+  const days = Math.floor(totalMinutes / 1_440)
+  const hours = Math.floor((totalMinutes % 1_440) / 60)
+  const minutes = totalMinutes % 60
+
+  return {
+    label: diff > 0 ? 'Zu dem Ja-Wort noch:' : 'Seit dem Ja-Wort:',
+    value: `${days} Tage ${hours} Std ${minutes} Min`,
+    date: wedding.toLocaleDateString(locale.value),
+    isFuture: diff > 0,
+  }
+})
+
+const statusColors: Record<string, string> = {
+  'Voll motiviert - Lass uns Ausgehen': 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/30',
+  Kuschelbedürftig: 'bg-rose-500/15 text-rose-200 ring-rose-300/30',
+  Hangry: 'bg-amber-500/15 text-amber-200 ring-amber-300/30',
+  'Im Tunnel': 'bg-cyan-500/15 text-cyan-200 ring-cyan-300/30',
+  'Pause benötigt - Sofazeit': 'bg-violet-500/15 text-violet-200 ring-violet-300/30',
+}
+
+function statusClass(partner?: Partner) {
+  return partner ? statusColors[partner.hungerLevel] : 'bg-white/10 text-white/70 ring-white/15'
+}
+
+function partnerStatus(partner?: Partner) {
+  return partner ? hungerLevelLabelForPartner(partner) : 'Status offen'
+}
 
 async function loadDisplay() {
   if (!isSupabaseConfigured || !initialized.value || !isAuthenticated.value) {
@@ -57,7 +101,15 @@ async function loadDisplay() {
   await loadCouple()
 }
 
-onMounted(() => void loadDisplay())
+onMounted(() => {
+  clockInterval = window.setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+  void loadDisplay()
+})
+onUnmounted(() => {
+  window.clearInterval(clockInterval)
+})
 watch([initialized, isAuthenticated], () => void loadDisplay())
 </script>
 
@@ -72,158 +124,210 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
     </UCard>
   </section>
 
-  <section v-else-if="couple" class="relative space-y-8 pb-36 xl:pb-0">
-    <AlertFeed
-      class="relative left-1/2 -mt-8 w-screen -translate-x-1/2 sm:-mt-10"
-      :alerts="alerts"
-    />
+  <section
+    v-else-if="couple"
+    class="-mx-4 -mb-16 -mt-8 min-h-[calc(100vh-5rem)] bg-[radial-gradient(circle_at_12%_15%,rgb(20_184_166_/_0.2),transparent_30rem),radial-gradient(circle_at_88%_18%,rgb(244_63_94_/_0.16),transparent_32rem),linear-gradient(135deg,#10151d_0%,#171a22_46%,#0d1417_100%)] p-4 text-white sm:-mx-6 sm:-mt-10 sm:p-6 lg:-mx-8 lg:p-8"
+  >
+    <div
+      class="relative grid min-h-[calc(100vh-10rem)] grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
+    >
+      <UCard
+        class="overflow-hidden border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl xl:col-span-2 xl:row-span-2"
+        :ui="{ body: 'flex min-h-[23rem] flex-col justify-between gap-8 p-5 sm:p-7 lg:min-h-[25rem]' }"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Private Couple Display</p>
+            <h1 class="max-w-[14ch] text-5xl font-black leading-[0.9] sm:text-7xl xl:text-8xl">
+              {{ couple.name }}
+            </h1>
+            <p class="mt-4 max-w-3xl text-base text-white/70 sm:text-xl">
+              {{ couple.subtitle }}
+            </p>
+          </div>
+          <div class="flex -space-x-3">
+            <UAvatar
+              :src="firstPartner?.avatarUrl"
+              :text="firstPartner?.avatarUrl ? undefined : firstPartner?.avatarFallback"
+              :alt="firstPartner?.name ?? 'Partner 1'"
+              size="xl"
+              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              loading="lazy"
+            />
+            <UAvatar
+              :src="secondPartner?.avatarUrl"
+              :text="secondPartner?.avatarUrl ? undefined : secondPartner?.avatarFallback"
+              :alt="secondPartner?.name ?? 'Partner 2'"
+              size="xl"
+              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              loading="lazy"
+            />
+          </div>
+        </div>
 
-    <div class="grid gap-4">
-      <UCard :ui="{ body: 'p-6 sm:p-10' }">
-        <div class="w-full justify-start">
-          <div class="max-w-4xl">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div class="flex flex-wrap gap-2">
-                <UBadge color="success" variant="soft">{{ t('dashboard.privateSession') }}</UBadge>
-                <UBadge color="neutral" variant="soft">{{
-                  t('dashboard.protectedRealtime')
-                }}</UBadge>
-              </div>
-              <div class="flex -space-x-2">
-                <UAvatar
-                  v-for="partner in couple.partners"
-                  :key="partner.id"
-                  :src="partner.avatarUrl"
-                  :text="partner.avatarUrl ? undefined : partner.avatarFallback"
-                  :alt="partner.name"
-                  size="lg"
-                  class="ring-2 ring-default"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-            <h1 class="text-5xl font-black leading-none sm:text-7xl">{{ couple.name }}</h1>
-            <p class="mt-4 max-w-2xl text-lg text-muted">{{ couple.subtitle }}</p>
+        <div class="grid gap-1 border-t border-white/15 pt-4">
+          <p class="text-white/60">Gemeinsame Erinnerungen</p>
+          <strong class="text-3xl font-black leading-none sm:text-5xl">{{ relationshipUptime }}</strong>
+          <span class="text-white/60">
+            Seit {{ new Date(couple.relationshipStart).toLocaleDateString(locale) }}
+          </span>
+        </div>
+      </UCard>
 
-            <div
-              class="mt-8 grid overflow-hidden rounded-md border border-default bg-default shadow-sm sm:grid-cols-3"
-            >
-              <div
-                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
-              >
-                <div class="text-sm text-muted">{{ t('dashboard.relationshipUptime') }}</div>
-                <div class="mt-1 text-4xl font-black leading-none text-green-500 sm:text-5xl">
-                  {{ relationshipUptime }}
-                </div>
-                <div class="mt-1 text-sm text-muted">
-                  {{
-                    t('dashboard.since', {
-                      date: new Date(couple.relationshipStart).toLocaleDateString(locale),
-                    })
-                  }}
-                </div>
-              </div>
-              <div
-                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
-              >
-                <div class="text-sm text-muted">{{ t('dashboard.daysUntilWedding') }}</div>
-                <div class="mt-1 text-4xl font-black leading-none text-primary-500 sm:text-5xl">
-                  {{ daysUntilWedding }}
-                </div>
-                <div class="mt-1 text-sm text-muted">
-                  {{ new Date(couple.weddingDate).toLocaleDateString(locale) }}
-                </div>
-              </div>
-              <div
-                class="border-t border-default p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
-              >
-                <div class="text-sm text-muted">{{ t('dashboard.commitmentLevel') }}</div>
-                <div class="mt-1 text-4xl font-black leading-none text-primary-400 sm:text-5xl">
-                  100%
-                </div>
-                <div class="mt-1 text-sm text-muted">{{ t('dashboard.noRollback') }}</div>
-              </div>
-            </div>
+      <UCard
+        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        :ui="{ body: 'flex h-full min-h-48 flex-col justify-between gap-6 p-5 sm:p-6' }"
+      >
+        <div>
+          <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Seit dem Ja-Wort</p>
+          <h2 class="text-2xl font-black leading-none">{{ weddingCountdown.label }}</h2>
+        </div>
+        <div
+          :class="[
+            'text-4xl font-black leading-none sm:text-5xl xl:text-6xl',
+            weddingCountdown.isFuture ? 'text-rose-300' : 'text-teal-300',
+          ]"
+        >
+          {{ weddingCountdown.value }}
+        </div>
+        <p class="text-white/60">{{ weddingCountdown.date }}</p>
+      </UCard>
+
+      <UCard
+        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        :ui="{ body: 'h-full p-5 sm:p-6' }"
+      >
+        <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Wer ist dran?</p>
+        <h2 class="text-2xl font-black leading-none">Wer macht den Kaffee?</h2>
+        <div class="mt-6 flex items-center gap-4">
+          <UAvatar
+            :src="choreTurnPartner?.avatarUrl"
+            :text="choreTurnPartner?.avatarUrl ? undefined : choreTurnPartner?.avatarFallback"
+            :alt="choreTurnPartner?.name ?? 'Kein Partner ausgewählt'"
+            size="3xl"
+            class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+            loading="lazy"
+          />
+          <div class="min-w-0">
+            <p class="truncate text-3xl font-black leading-none">
+              {{ choreTurnPartner?.name ?? 'Noch niemand' }}
+            </p>
+            <span class="text-white/60">Aktuelle Kaffee-Schicht</span>
           </div>
         </div>
       </UCard>
-    </div>
 
-    <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-5' }">
-      <div class="grid gap-4">
-        <div class="flex flex-wrap items-start justify-between gap-3">
+      <UCard
+        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl md:col-span-2"
+        :ui="{ body: 'grid h-full gap-4 p-5 sm:p-6' }"
+      >
+        <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-xl font-black">{{ t('hunger.title') }}</h2>
-            <p class="text-sm text-muted">{{ t('hunger.description') }}</p>
+            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Live Status</p>
+            <h2 class="text-2xl font-black leading-none">Partner-Akku</h2>
           </div>
-          <UBadge color="warning" variant="soft">{{ t('hunger.live') }}</UBadge>
+          <span class="mt-2 h-3 w-3 rounded-full bg-teal-300 shadow-[0_0_0_6px_rgb(94_234_212_/_0.16)] animate-pulse" />
         </div>
 
-        <div class="grid gap-3 md:grid-cols-2">
-          <div
-            v-for="partner in couple.partners"
-            :key="partner.id"
-            class="flex items-center gap-3 rounded-md border border-default bg-muted/40 p-3"
-          >
+        <div class="grid gap-3 sm:grid-cols-2">
+          <article class="flex min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3">
             <UAvatar
-              :src="partner.avatarUrl"
-              :text="partner.avatarUrl ? undefined : partner.avatarFallback"
-              :alt="partner.name"
-              size="lg"
-              class="ring ring-default"
+              :src="firstPartner?.avatarUrl"
+              :text="firstPartner?.avatarUrl ? undefined : firstPartner?.avatarFallback"
+              :alt="firstPartner?.name ?? 'Partner 1'"
+              size="xl"
+              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              loading="lazy"
             />
             <div class="min-w-0">
-              <div class="text-sm font-semibold text-muted">
-                {{ partner.name }} - {{ t('hunger.level') }}
-              </div>
-              <div class="truncate text-base font-black text-highlighted">
-                {{ hungerLevelLabelForPartner(partner) }}
-              </div>
+              <h3 class="truncate text-xl font-black">{{ firstPartner?.name ?? 'Partner 1' }}</h3>
+              <span
+                :class="[
+                  'mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
+                  statusClass(firstPartner),
+                ]"
+              >
+                {{ partnerStatus(firstPartner) }}
+              </span>
             </div>
-          </div>
+          </article>
+
+          <article class="flex min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3">
+            <UAvatar
+              :src="secondPartner?.avatarUrl"
+              :text="secondPartner?.avatarUrl ? undefined : secondPartner?.avatarFallback"
+              :alt="secondPartner?.name ?? 'Partner 2'"
+              size="xl"
+              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              loading="lazy"
+            />
+            <div class="min-w-0">
+              <h3 class="truncate text-xl font-black">{{ secondPartner?.name ?? 'Partner 2' }}</h3>
+              <span
+                :class="[
+                  'mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
+                  statusClass(secondPartner),
+                ]"
+              >
+                {{ partnerStatus(secondPartner) }}
+              </span>
+            </div>
+          </article>
         </div>
+      </UCard>
+
+      <section
+        class="min-w-0 xl:col-span-3 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-white/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-white/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:backdrop-blur-xl"
+      >
+        <RelationshipTimelineWidget v-if="timelineWidget" :widget="timelineWidget" />
+        <UCard
+          v-else
+          class="h-full border-white/15 bg-white/[0.075] text-white shadow-2xl backdrop-blur-xl"
+          :ui="{ body: 'grid h-full place-content-center gap-2 p-6 text-center' }"
+        >
+          <p class="text-xs font-extrabold uppercase text-white/60">Timeline</p>
+          <h2 class="text-2xl font-black">Unsere Meilensteine</h2>
+          <p class="text-white/60">Die nächsten Erinnerungen warten schon.</p>
+        </UCard>
+      </section>
+
+      <UCard
+        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        :ui="{ body: 'grid h-full content-start gap-4 p-5 sm:p-6' }"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Alerts</p>
+            <h2 class="text-2xl font-black leading-none">Live Hinweise</h2>
+          </div>
+          <UBadge color="warning" variant="soft">{{ alerts.length }} aktiv</UBadge>
+        </div>
+        <div
+          v-if="alerts.length"
+          class="[&_.alert-strip-track]:grid [&_.alert-strip-track]:min-w-0 [&_.alert-strip-track]:animate-none [&_.alert-strip-track]:p-0 [&_.border-y]:border-0 [&_.border-y]:bg-transparent"
+        >
+          <AlertFeed :alerts="alerts" />
+        </div>
+        <div
+          v-else
+          class="grid min-h-28 place-content-center gap-1 rounded-md border border-dashed border-white/15 bg-black/10 text-center"
+        >
+          <strong>Alles ruhig.</strong>
+          <span class="text-white/60">Keine aktiven Hinweise auf dem Display.</span>
+        </div>
+      </UCard>
+
+      <section class="self-end [&_.rounded-lg]:rounded-md [&_.rounded-xl]:rounded-md">
+        <QrCodeCard
+          :label="t('dashboard.editLogin')"
+          :person="t('edit.sharedDashboard')"
+          :url="`/edit/${couple.slug}`"
+        />
+      </section>
+
+      <div v-if="loading" class="pointer-events-none absolute inset-0 opacity-30">
+        <USkeleton class="h-full min-h-40 rounded-md" />
       </div>
-    </UCard>
-
-    <div v-if="loading" class="grid gap-4 md:grid-cols-3">
-      <USkeleton v-for="item in 6" :key="item" class="h-44" />
-    </div>
-
-    <section v-if="timelineWidgets.length" class="grid gap-4 xl:grid-cols-2">
-      <RelationshipTimelineWidget
-        v-for="widget in timelineWidgets"
-        :key="widget.id"
-        :widget="widget"
-      />
-    </section>
-
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-black">{{ t('dashboard.coreMetrics') }}</h2>
-        <UBadge color="info" variant="soft">
-          {{ t('dashboard.visible', { count: sharedWidgets.length }) }}
-        </UBadge>
-      </div>
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MetricTile v-for="widget in sharedWidgets" :key="widget.id" :widget="widget" />
-      </div>
-    </section>
-
-    <div class="grid gap-4 sm:grid-cols-2 xl:hidden">
-      <QrCodeCard
-        :label="t('dashboard.editLogin')"
-        :person="t('edit.sharedDashboard')"
-        :url="`/edit/${couple.slug}`"
-      />
-    </div>
-
-    <div class="pointer-events-none fixed inset-x-4 bottom-4 z-10 hidden justify-end xl:flex">
-      <QrCodeCard
-        class="pointer-events-auto"
-        :label="t('dashboard.editLogin')"
-        :person="t('edit.sharedDashboard')"
-        :url="`/edit/${couple.slug}`"
-      />
     </div>
   </section>
 

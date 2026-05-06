@@ -12,7 +12,8 @@ create table if not exists public.couple (
   name text not null,
   subtitle text not null default '',
   relationship_start date not null,
-  wedding_date date not null,
+  wedding_date timestamptz not null,
+  chore_turn_partner_id uuid,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
@@ -25,11 +26,12 @@ create table if not exists public.partner (
   name text not null,
   role text not null default '',
   accent text not null default 'primary' check (accent in ('primary', 'secondary', 'accent', 'info', 'success', 'warning', 'error')),
-  hunger_level text not null default 'full' check (hunger_level in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical')),
+  hunger_level text not null default 'Voll motiviert - Lass uns Ausgehen' check (hunger_level in ('Voll motiviert - Lass uns Ausgehen', 'Kuschelbedürftig', 'Hangry', 'Im Tunnel', 'Pause benötigt - Sofazeit')),
   avatar_path text,
   invite_token_hash text,
   created_at timestamptz not null default now(),
   unique (couple_id, slug),
+  constraint partner_couple_id_id_unique unique (couple_id, id),
   constraint partner_couple_user_unique unique (couple_id, user_id)
 );
 
@@ -75,6 +77,7 @@ create table if not exists public.couple_alert (
 
 create index if not exists couple_slug_idx on public.couple (slug);
 create index if not exists couple_created_by_idx on public.couple (created_by);
+create index if not exists couple_chore_turn_partner_id_idx on public.couple (chore_turn_partner_id);
 create index if not exists partner_couple_id_idx on public.partner (couple_id);
 create index if not exists partner_user_id_idx on public.partner (user_id);
 create index if not exists partner_avatar_path_idx on public.partner (avatar_path) where avatar_path is not null;
@@ -86,6 +89,12 @@ create index if not exists couple_alert_couple_active_created_idx
   on public.couple_alert (couple_id, active, created_at desc);
 create index if not exists couple_alert_triggered_by_partner_id_idx
   on public.couple_alert (triggered_by_partner_id);
+
+alter table public.couple
+  add constraint couple_chore_turn_partner_fk
+  foreign key (id, chore_turn_partner_id)
+  references public.partner (couple_id, id)
+  on delete set null (chore_turn_partner_id);
 
 create schema if not exists private;
 
@@ -200,7 +209,8 @@ returns table (
   name text,
   subtitle text,
   relationship_start date,
-  wedding_date date,
+  wedding_date timestamptz,
+  chore_turn_partner_id uuid,
   partner_count bigint,
   accepted_partner_count bigint
 )
@@ -216,6 +226,7 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
+    couple.chore_turn_partner_id,
     count(distinct partner.id) as partner_count,
     count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count
   from public.couple_member member
@@ -305,7 +316,8 @@ returns table (
   name text,
   subtitle text,
   relationship_start date,
-  wedding_date date,
+  wedding_date timestamptz,
+  chore_turn_partner_id uuid,
   partner_count bigint,
   accepted_partner_count bigint,
   widget_count bigint,
@@ -324,6 +336,7 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
+    couple.chore_turn_partner_id,
     count(distinct partner.id) as partner_count,
     count(distinct partner.id) filter (where partner.user_id is not null) as accepted_partner_count,
     count(distinct widget.id) as widget_count,
@@ -532,7 +545,13 @@ begin
     raise exception 'Authentication required';
   end if;
 
-  if p_hunger_level not in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical') then
+  if p_hunger_level not in (
+    'Voll motiviert - Lass uns Ausgehen',
+    'Kuschelbedürftig',
+    'Hangry',
+    'Im Tunnel',
+    'Pause benötigt - Sofazeit'
+  ) then
     raise exception 'Invalid hunger level';
   end if;
 
@@ -552,6 +571,43 @@ begin
 end;
 $$;
 
+create or replace function public.update_couple_settings(
+  p_couple_id uuid,
+  p_relationship_start date,
+  p_wedding_date date,
+  p_chore_turn_partner_id uuid default null
+) returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if not public.is_app_admin() and not public.is_couple_member(p_couple_id) then
+    raise exception 'Not allowed';
+  end if;
+
+  if p_chore_turn_partner_id is not null
+    and not exists (
+      select 1
+      from public.partner partner
+      where partner.id = p_chore_turn_partner_id
+        and partner.couple_id = p_couple_id
+    ) then
+    raise exception 'Selected partner does not belong to this couple';
+  end if;
+
+  update public.couple
+    set relationship_start = p_relationship_start,
+        wedding_date = p_wedding_date,
+        chore_turn_partner_id = p_chore_turn_partner_id
+  where id = p_couple_id;
+
+  if not found then
+    raise exception 'Couple not found';
+  end if;
+end;
+$$;
+
 create or replace function public.admin_get_tenant(p_couple_id uuid)
 returns table (
   couple_id uuid,
@@ -559,7 +615,8 @@ returns table (
   name text,
   subtitle text,
   relationship_start date,
-  wedding_date date,
+  wedding_date timestamptz,
+  chore_turn_partner_id uuid,
   partners jsonb
 )
 language sql
@@ -574,6 +631,7 @@ as $$
     couple.subtitle,
     couple.relationship_start,
     couple.wedding_date,
+    couple.chore_turn_partner_id,
     coalesce(
       jsonb_agg(
         jsonb_build_object(
@@ -943,12 +1001,45 @@ begin
 end;
 $$;
 
+create or replace function public.enforce_couple_member_settings_update()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if (select private.is_app_admin()) then
+    return new;
+  end if;
+
+  if not private.is_couple_member(old.id) then
+    raise exception 'Not allowed';
+  end if;
+
+  if new.id is distinct from old.id
+    or new.slug is distinct from old.slug
+    or new.name is distinct from old.name
+    or new.subtitle is distinct from old.subtitle
+    or new.created_by is distinct from old.created_by
+    or new.created_at is distinct from old.created_at then
+    raise exception 'Couple members can only update relationship_start, wedding_date and chore_turn_partner_id';
+  end if;
+
+  return new;
+end;
+$$;
+
 alter table public.app_admin enable row level security;
 alter table public.couple enable row level security;
 alter table public.partner enable row level security;
 alter table public.couple_member enable row level security;
 alter table public.dashboard_widget enable row level security;
 alter table public.couple_alert enable row level security;
+
+create trigger enforce_couple_member_settings_update
+before update on public.couple
+for each row
+execute function public.enforce_couple_member_settings_update();
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -984,6 +1075,26 @@ on public.couple for update
 to authenticated
 using ((select private.is_app_admin()))
 with check ((select private.is_app_admin()));
+
+create policy "Members update couple settings"
+on public.couple for update
+to authenticated
+using ((select private.is_app_admin()) or private.is_couple_member(id))
+with check (
+  (select private.is_app_admin())
+  or (
+    private.is_couple_member(id)
+    and (
+      chore_turn_partner_id is null
+      or exists (
+        select 1
+        from public.partner partner
+        where partner.id = couple.chore_turn_partner_id
+          and partner.couple_id = couple.id
+      )
+    )
+  )
+);
 
 create policy "App admins delete couples"
 on public.couple for delete
@@ -1158,7 +1269,7 @@ grant usage on schema private to authenticated;
 
 grant select (user_id, created_at) on public.app_admin to authenticated;
 grant insert, update, delete on public.app_admin to authenticated;
-grant select (id, slug, name, subtitle, relationship_start, wedding_date, created_at)
+grant select (id, slug, name, subtitle, relationship_start, wedding_date, chore_turn_partner_id, created_at)
   on public.couple to authenticated;
 grant insert, update, delete on public.couple to authenticated;
 grant select (id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at)
@@ -1178,6 +1289,7 @@ grant execute on function public.get_couple_invite_status(uuid) to authenticated
 grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
 grant execute on function public.update_partner_avatar(uuid, text) to authenticated;
 grant execute on function public.update_partner_hunger_level(uuid, text) to authenticated;
+grant execute on function public.update_couple_settings(uuid, date, date, uuid) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
@@ -1196,6 +1308,16 @@ begin
     from pg_publication
     where pubname = 'supabase_realtime'
   ) then
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'couple'
+    ) then
+      alter publication supabase_realtime add table public.couple;
+    end if;
+
     if not exists (
       select 1
       from pg_publication_tables
