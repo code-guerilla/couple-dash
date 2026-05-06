@@ -36,6 +36,7 @@ declare module 'vue' {
     UFileUpload: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/FileUpload.vue')['default']
     UFormField: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
     UHeader: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Header.vue')['default']
+    UIcon: typeof import('./node_modules/@nuxt/ui/dist/runtime/vue/components/Icon.vue')['default']
     UInput: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UInputNumber: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/InputNumber.vue')['default']
     ULink: typeof import('./node_modules/@nuxt/ui/dist/runtime/vue/overrides/vue-router/Link.vue')['default']

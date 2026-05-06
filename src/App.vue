@@ -77,7 +77,7 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
     </UHeader>
 
     <UMain>
-      <UContainer class="py-8 sm:py-10">
+      <UContainer class="max-w-7xl py-8 sm:py-10">
         <RouterView />
       </UContainer>
     </UMain>

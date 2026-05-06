@@ -622,7 +622,7 @@ onMounted(() => {
     <UAlert color="warning" variant="soft" :description="t('dashboard.supabaseRequired')" />
   </section>
 
-  <section v-else-if="couple" class="mx-auto max-w-3xl space-y-6 pb-10">
+  <section v-else-if="couple" class="mx-auto max-w-5xl space-y-6 pb-10">
     <div class="flex items-center justify-between gap-4">
       <div>
         <p class="text-sm font-semibold text-muted">{{ couple.name }}</p>

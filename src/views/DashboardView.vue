@@ -5,18 +5,19 @@ import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import MetricTile from '@/components/MetricTile.vue'
-import PartnerHungerLevelPanel from '@/components/PartnerHungerLevelPanel.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
+import { hungerLevelLabelForPartner } from '@/data/hungerLevels'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
-const { couple, visibleWidgets, alerts, loading, error, loadCouple, updatePartnerHungerLevel } =
-  useDashboardStore(coupleSlug.value)
+const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
+  coupleSlug.value,
+)
 
 const sharedWidgets = computed(() =>
   visibleWidgets.value.filter((widget) => widget.visual !== 'timeline'),
@@ -147,10 +148,41 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       </UCard>
     </div>
 
-    <PartnerHungerLevelPanel
-      :partners="couple.partners"
-      :update-hunger-level="updatePartnerHungerLevel"
-    />
+    <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-5' }">
+      <div class="grid gap-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-black">{{ t('hunger.title') }}</h2>
+            <p class="text-sm text-muted">{{ t('hunger.description') }}</p>
+          </div>
+          <UBadge color="warning" variant="soft">{{ t('hunger.live') }}</UBadge>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-2">
+          <div
+            v-for="partner in couple.partners"
+            :key="partner.id"
+            class="flex items-center gap-3 rounded-md border border-default bg-muted/40 p-3"
+          >
+            <UAvatar
+              :src="partner.avatarUrl"
+              :text="partner.avatarUrl ? undefined : partner.avatarFallback"
+              :alt="partner.name"
+              size="lg"
+              class="ring ring-default"
+            />
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-muted">
+                {{ partner.name }} - {{ t('hunger.level') }}
+              </div>
+              <div class="truncate text-base font-black text-highlighted">
+                {{ hungerLevelLabelForPartner(partner) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </UCard>
 
     <div v-if="loading" class="grid gap-4 md:grid-cols-3">
       <USkeleton v-for="item in 6" :key="item" class="h-44" />

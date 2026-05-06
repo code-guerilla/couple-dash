@@ -205,20 +205,20 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
               </div>
             </div>
             <div class="flex flex-wrap gap-2 lg:justify-end">
-              <UButton
-                icon="i-lucide-monitor"
-                :label="text.display"
-                size="sm"
-                variant="outline"
-                :to="tenantDisplayUrl(tenant.slug)"
-              />
-              <UButton
-                icon="i-lucide-pencil"
-                :label="text.edit"
-                size="sm"
-                variant="outline"
-                :to="tenantEditUrl(tenant.slug)"
-              />
+              <a
+                class="inline-flex h-8 items-center gap-1.5 rounded-md border border-default px-2.5 text-sm font-medium text-default hover:bg-elevated"
+                :href="tenantDisplayUrl(tenant.slug)"
+              >
+                <UIcon name="i-lucide-monitor" class="size-4" />
+                {{ text.display }}
+              </a>
+              <a
+                class="inline-flex h-8 items-center gap-1.5 rounded-md border border-default px-2.5 text-sm font-medium text-default hover:bg-elevated"
+                :href="tenantEditUrl(tenant.slug)"
+              >
+                <UIcon name="i-lucide-pencil" class="size-4" />
+                {{ text.edit }}
+              </a>
               <UButton
                 icon="i-lucide-settings"
                 :label="text.manage"
