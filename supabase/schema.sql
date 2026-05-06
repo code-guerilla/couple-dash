@@ -48,7 +48,7 @@ create table if not exists public.dashboard_widget (
   value text not null,
   unit text,
   detail text not null default '',
-  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline')),
+  visual text not null default 'stat' check (visual in ('stat', 'progress', 'radial', 'memory', 'timeline')),
   sort_order integer not null default 0,
   min_value numeric,
   max_value numeric,
@@ -56,8 +56,6 @@ create table if not exists public.dashboard_widget (
   tone text not null default 'info' check (tone in ('info', 'success', 'warning', 'error')),
   visible boolean not null default true,
   timeline_entries jsonb not null default '[]'::jsonb,
-  chart_data jsonb not null default '[]'::jsonb,
-  chart_options jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
@@ -417,9 +415,7 @@ begin
     max_value,
     numeric_value,
     tone,
-    timeline_entries,
-    chart_data,
-    chart_options
+    timeline_entries
   ) values
     (
       new_couple_id,
@@ -434,14 +430,8 @@ begin
       jsonb_build_array(
         jsonb_build_object('id', 'first-met', 'date', p_relationship_start, 'title', 'First Met', 'description', 'The first chapter of the story.', 'icon', 'i-lucide-sparkles'),
         jsonb_build_object('id', 'wedding', 'date', p_wedding_date, 'title', 'The Wedding', 'description', 'The big day on the shared calendar.', 'icon', 'i-lucide-church')
-      ),
-      '[]'::jsonb,
-      '{}'::jsonb
-    ),
-    (new_couple_id, 'Woraus die Beziehung besteht', '100%', 'Liebe, Kaffee und Essensdiskussionen in einem wissenschaftlich fragwürdigen Mix.', 'donut', 2, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Liebe', 'value', 40), jsonb_build_object('label', 'Kaffee', 'value', 20), jsonb_build_object('label', 'Diskussionen über Essen', 'value', 25), jsonb_build_object('label', 'Gemeinsame Serien', 'value', 15)), jsonb_build_object('centralLabel', 'Beziehungs-Mix', 'centralSubLabel', 'wissenschaftlich fragwürdig')),
-    (new_couple_id, 'Gewonnene Diskussionen', '75%', 'Beide tun so, als hätten sie gewonnen.', 'donut', 3, null, null, 'warning', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Partner A', 'value', 12), jsonb_build_object('label', 'Partner B', 'value', 13), jsonb_build_object('label', 'Beide gewonnen', 'value', 75)), jsonb_build_object('centralLabel', '75%', 'centralSubLabel', 'diplomatischer Sieg')),
-    (new_couple_id, 'Top Beziehungsthemen', '87', 'Ranking der wichtigsten Haushaltskonferenzen.', 'bar', 4, null, null, 'info', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Was essen wir?', 'value', 87), jsonb_build_object('label', 'Wo sind die Schlüssel?', 'value', 42), jsonb_build_object('label', 'Noch eine Folge?', 'value', 64)), '{}'::jsonb),
-    (new_couple_id, 'Romantik im Zeitverlauf', '100', 'Fake Trend, echte Gefühle.', 'line', 5, null, null, 'success', '[]'::jsonb, jsonb_build_array(jsonb_build_object('label', 'Kennenlernen', 'value', 80), jsonb_build_object('label', 'Erster Urlaub', 'value', 95), jsonb_build_object('label', 'Umzug', 'value', 62), jsonb_build_object('label', 'Hochzeit', 'value', 100)), '{}'::jsonb);
+      )
+    );
 
   insert into public.couple_alert (couple_id, title, detail, severity, source)
   values (
@@ -751,9 +741,7 @@ create or replace function public.update_dashboard_widget(
   p_visual text default null,
   p_tone text default null,
   p_numeric_value numeric default null,
-  p_timeline_entries jsonb default null,
-  p_chart_data jsonb default null,
-  p_chart_options jsonb default null
+  p_timeline_entries jsonb default null
 ) returns void
 language plpgsql
 security definer
@@ -784,100 +772,7 @@ begin
         tone = coalesce(p_tone, tone),
         numeric_value = p_numeric_value,
         timeline_entries = coalesce(p_timeline_entries, timeline_entries),
-        chart_data = coalesce(p_chart_data, chart_data),
-        chart_options = coalesce(p_chart_options, chart_options),
         updated_at = now()
-  where id = p_widget_id;
-end;
-$$;
-
-create or replace function public.add_dashboard_widget(
-  p_couple_id uuid,
-  p_label text,
-  p_value text default '',
-  p_unit text default null,
-  p_detail text default '',
-  p_visual text default 'stat',
-  p_sort_order integer default 0,
-  p_min_value numeric default null,
-  p_max_value numeric default null,
-  p_numeric_value numeric default null,
-  p_tone text default 'info',
-  p_timeline_entries jsonb default null,
-  p_chart_data jsonb default null,
-  p_chart_options jsonb default null
-) returns uuid
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  new_id uuid;
-begin
-  if not public.is_app_admin() and not public.is_couple_member(p_couple_id) then
-    raise exception 'Not allowed';
-  end if;
-
-  insert into public.dashboard_widget (
-    couple_id,
-    label,
-    value,
-    unit,
-    detail,
-    visual,
-    sort_order,
-    min_value,
-    max_value,
-    numeric_value,
-    tone,
-    timeline_entries,
-    chart_data,
-    chart_options
-  ) values (
-    p_couple_id,
-    p_label,
-    p_value,
-    p_unit,
-    coalesce(p_detail, ''),
-    coalesce(p_visual, 'stat'),
-    coalesce(p_sort_order, 0),
-    p_min_value,
-    p_max_value,
-    p_numeric_value,
-    coalesce(p_tone, 'info'),
-    coalesce(p_timeline_entries, '[]'::jsonb),
-    coalesce(p_chart_data, '[]'::jsonb),
-    coalesce(p_chart_options, '{}'::jsonb)
-  )
-  returning id into new_id;
-
-  return new_id;
-end;
-$$;
-
-create or replace function public.delete_dashboard_widget(p_widget_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  target_widget public.dashboard_widget%rowtype;
-begin
-  select *
-    into target_widget
-  from public.dashboard_widget widget
-  where widget.id = p_widget_id;
-
-  if target_widget.id is null then
-    raise exception 'Widget not found';
-  end if;
-
-  if not public.is_app_admin() and not public.is_couple_member(target_widget.couple_id) then
-    raise exception 'Not allowed';
-  end if;
-
-  delete from public.dashboard_widget
   where id = p_widget_id;
 end;
 $$;
@@ -1093,14 +988,14 @@ on public.dashboard_widget for select
 to authenticated
 using (public.is_couple_member(couple_id));
 
-create policy "Members manage shared dashboard widgets"
-on public.dashboard_widget for all
+create policy "Members update fixed dashboard widgets"
+on public.dashboard_widget for update
 to authenticated
 using (public.is_couple_member(couple_id))
 with check (public.is_couple_member(couple_id));
 
-create policy "App admins manage widgets"
-on public.dashboard_widget for all
+create policy "App admins update widgets"
+on public.dashboard_widget for update
 to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
@@ -1208,7 +1103,7 @@ grant select (id, couple_id, slug, name, role, accent, hunger_level, avatar_path
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
-grant select, insert, update, delete on public.dashboard_widget to authenticated;
+grant select, update on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function public.is_app_admin() to authenticated;
@@ -1225,9 +1120,7 @@ grant execute on function public.admin_get_tenant(uuid) to authenticated;
 grant execute on function public.admin_update_tenant(uuid, text, text, text, date, date, uuid, text, text, uuid, text, text) to authenticated;
 grant execute on function public.admin_regenerate_tenant_credentials(uuid) to authenticated;
 grant execute on function public.admin_delete_tenant(uuid) to authenticated;
-grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb) to authenticated;
-grant execute on function public.add_dashboard_widget(uuid, text, text, text, text, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb) to authenticated;
-grant execute on function public.delete_dashboard_widget(uuid) to authenticated;
+grant execute on function public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb) to authenticated;
 grant execute on function public.set_widget_visible(uuid, boolean) to authenticated;
 grant execute on function public.set_alert_active(uuid, boolean) to authenticated;
 grant execute on function public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz, uuid) to authenticated;

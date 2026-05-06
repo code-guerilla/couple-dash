@@ -3,8 +3,6 @@ import { i18n } from '@/i18n'
 import { isHungerLevelValue } from '@/data/hungerLevels'
 import { partnerAvatarBucket, supabase } from '@/services/supabase'
 import type {
-  ChartDataPoint,
-  ChartOptions,
   CoupleAlert,
   DashboardState,
   DashboardWidget,
@@ -62,34 +60,6 @@ function mapTimelineEntries(value: unknown): TimelineEntry[] {
   })
 }
 
-function mapChartData(value: unknown): ChartDataPoint[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  return value.map((entry) => {
-    const item = entry as Partial<ChartDataPoint>
-
-    return {
-      label: String(item.label ?? ''),
-      value: Number(item.value ?? 0),
-    }
-  })
-}
-
-function mapChartOptions(value: unknown): ChartOptions {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
-  }
-
-  const options = value as Partial<ChartOptions>
-
-  return {
-    centralLabel: options.centralLabel ? String(options.centralLabel) : undefined,
-    centralSubLabel: options.centralSubLabel ? String(options.centralSubLabel) : undefined,
-  }
-}
-
 function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
   return {
     id: String(row.id),
@@ -106,8 +76,6 @@ function mapWidgetFromRow(row: Record<string, unknown>): DashboardWidget {
     tone: String(row.tone ?? 'info') as DashboardWidget['tone'],
     visible: Boolean(row.visible ?? true),
     timelineEntries: mapTimelineEntries(row.timeline_entries),
-    chartData: mapChartData(row.chart_data),
-    chartOptions: mapChartOptions(row.chart_options),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
   }
 }
@@ -324,8 +292,6 @@ export function useDashboardStore(coupleSlug?: string) {
       p_tone: patch.tone ?? null,
       p_numeric_value: patch.numericValue ?? null,
       p_timeline_entries: patch.timelineEntries ?? null,
-      p_chart_data: patch.chartData ?? null,
-      p_chart_options: patch.chartOptions ?? null,
     })
 
     if (updateError) {
@@ -348,53 +314,6 @@ export function useDashboardStore(coupleSlug?: string) {
 
     if (updateError) {
       throw new Error(mapSupabaseError(updateError.message))
-    }
-
-    await loadCouple()
-  }
-
-  async function addWidget(widget: Omit<DashboardWidget, 'id' | 'updatedAt'>) {
-    if (!supabase) {
-      throw new Error(t('dashboard.supabaseRequired'))
-    }
-
-    const { error: addError } = await supabase.rpc('add_dashboard_widget', {
-      p_couple_id: widget.coupleId,
-      p_label: widget.label,
-      p_value: widget.value ?? '',
-      p_unit: widget.unit ?? null,
-      p_detail: widget.detail ?? '',
-      p_visual: widget.visual,
-      p_sort_order: widget.order,
-      p_min_value: widget.min ?? null,
-      p_max_value: widget.max ?? null,
-      p_numeric_value: widget.numericValue ?? null,
-      p_tone: widget.tone,
-      p_timeline_entries: widget.timelineEntries ?? [],
-      p_chart_data: widget.chartData,
-      p_chart_options: widget.chartOptions,
-    })
-
-    if (addError) {
-      error.value = addError.message
-      throw addError
-    }
-
-    await loadCouple()
-  }
-
-  async function deleteWidget(widgetId: string) {
-    if (!supabase) {
-      throw new Error(t('dashboard.supabaseRequired'))
-    }
-
-    const { error: deleteError } = await supabase.rpc('delete_dashboard_widget', {
-      p_widget_id: widgetId,
-    })
-
-    if (deleteError) {
-      error.value = deleteError.message
-      throw deleteError
     }
 
     await loadCouple()
@@ -473,8 +392,6 @@ export function useDashboardStore(coupleSlug?: string) {
     loadCouple,
     updateWidget,
     updatePartnerHungerLevel,
-    addWidget,
-    deleteWidget,
     setWidgetVisible,
     triggerAlert,
     setAlertActive,

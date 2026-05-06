@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
@@ -16,13 +16,7 @@ import {
   type CoupleInviteStatus,
   type PendingPartnerInvite,
 } from '@/services/supabase'
-import type {
-  AlertSeverity,
-  ChartDataPoint,
-  DashboardWidget,
-  TimelineEntry,
-  WidgetVisual,
-} from '@/types'
+import type { AlertSeverity, DashboardWidget, TimelineEntry } from '@/types'
 
 interface AlertTemplateDraft {
   id: string
@@ -43,8 +37,6 @@ const {
   loadCouple,
   updateWidget,
   updatePartnerHungerLevel,
-  addWidget,
-  deleteWidget,
   setWidgetVisible,
   triggerAlert,
   setAlertActive,
@@ -63,21 +55,6 @@ const uploadingAvatar = ref(false)
 const alertTemplateDrafts = ref<AlertTemplateDraft[]>([])
 const editingAlertTemplateId = ref<string | null>(null)
 const alertTemplateEditTitle = ref('')
-type ChartVisual = Extract<WidgetVisual, 'donut' | 'bar' | 'line'>
-const chartVisuals: ChartVisual[] = ['donut', 'bar', 'line']
-const chartDraft = reactive({
-  label: 'Woraus die Beziehung besteht',
-  detail: 'Ein wissenschaftlich fragwürdiger Mini-Chart.',
-  visual: 'donut' as ChartVisual,
-  tone: 'info' as AlertSeverity,
-  centralLabel: 'Mix',
-  centralSubLabel: 'live',
-  rows: [
-    { label: 'Liebe', value: 40 },
-    { label: 'Kaffee', value: 20 },
-    { label: 'Diskussionen über Essen', value: 25 },
-  ] as ChartDataPoint[],
-})
 const partner = computed(() =>
   couple.value?.partners.find((item) => item.id === currentPartnerId.value),
 )
@@ -100,25 +77,7 @@ const editableTimelineWidgets = computed(() =>
 const today = new Date().toISOString().slice(0, 10)
 const avatarAccept = partnerAvatarMimeTypes.join(',')
 
-const visualOptionValues: WidgetVisual[] = [
-  'stat',
-  'progress',
-  'radial',
-  'donut',
-  'bar',
-  'line',
-  'memory',
-]
 const toneOptionValues: AlertSeverity[] = ['info', 'success', 'warning', 'error']
-const visualOptions = computed(() =>
-  visualOptionValues.map((value) => ({ label: t(`edit.visuals.${value}`), value })),
-)
-const toneOptions = computed(() =>
-  toneOptionValues.map((value) => ({ label: t(`edit.tones.${value}`), value })),
-)
-const chartVisualOptions = computed(() =>
-  chartVisuals.map((value) => ({ label: t(`edit.visuals.${value}`), value })),
-)
 const alertTemplateOwnerKey = computed(() => currentPartnerId.value ?? 'unlinked')
 const alertTemplateStorageKey = computed(
   () => `couple-dash-alert-templates:${coupleSlug.value}:${alertTemplateOwnerKey.value}`,
@@ -143,7 +102,7 @@ const editAccordionItems = computed(() => [
     : []),
   {
     label: `${t('edit.editLiveMetrics')} (${editableMetricWidgets.value.length})`,
-    icon: 'i-lucide-chart-no-axes-combined',
+    icon: 'i-lucide-list-checks',
     value: 'live-metrics',
   },
   {
@@ -282,80 +241,7 @@ async function saveWidget(widget: DashboardWidget) {
     label: widget.label,
     value: widget.value,
     detail: widget.detail,
-    visual: widget.visual,
-    tone: widget.tone,
-    numericValue: widget.numericValue,
-    chartData: sanitizeChartData(widget.chartData),
-    chartOptions: widget.chartOptions,
   })
-}
-
-async function removeWidget(widget: DashboardWidget) {
-  await deleteWidget(widget.id)
-}
-
-function isChartWidget(widget: DashboardWidget) {
-  return chartVisuals.includes(widget.visual as ChartVisual)
-}
-
-function sanitizeChartData(rows: ChartDataPoint[]) {
-  return rows
-    .map((row) => ({
-      label: row.label.trim(),
-      value: Number(row.value) || 0,
-    }))
-    .filter((row) => row.label)
-}
-
-function addChartRow(widget: DashboardWidget) {
-  widget.chartData = [...widget.chartData, { label: t('edit.chartNewLabel'), value: 10 }]
-}
-
-function removeChartRow(widget: DashboardWidget, index: number) {
-  widget.chartData = widget.chartData.filter((_row, rowIndex) => rowIndex !== index)
-}
-
-function addDraftChartRow() {
-  chartDraft.rows.push({ label: t('edit.chartNewLabel'), value: 10 })
-}
-
-function removeDraftChartRow(index: number) {
-  chartDraft.rows = chartDraft.rows.filter((_row, rowIndex) => rowIndex !== index)
-}
-
-async function createChartWidget() {
-  if (!couple.value) {
-    return
-  }
-
-  const chartData = sanitizeChartData(chartDraft.rows)
-  if (!chartDraft.label.trim() || !chartData.length) {
-    return
-  }
-
-  await addWidget({
-    coupleId: couple.value.id,
-    label: chartDraft.label.trim(),
-    value: String(chartData.reduce((sum, row) => sum + row.value, 0)),
-    detail: chartDraft.detail.trim(),
-    visual: chartDraft.visual,
-    order: Math.max(0, ...widgets.value.map((widget) => widget.order)) + 1,
-    tone: chartDraft.tone,
-    visible: true,
-    timelineEntries: [],
-    chartData,
-    chartOptions: {
-      centralLabel: chartDraft.centralLabel.trim() || undefined,
-      centralSubLabel: chartDraft.centralSubLabel.trim() || undefined,
-    },
-  })
-
-  chartDraft.label = ''
-  chartDraft.detail = ''
-  chartDraft.rows = [
-    { label: 'Liebe', value: 40 },
-    { label: 'Kaffee', value: 20 },
-  ]
 }
 
 function addTimelineEntry(widget: DashboardWidget) {
@@ -722,7 +608,7 @@ onMounted(() => {
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm text-muted">{{ t('edit.editableMetrics') }}</div>
-            <div class="text-sm text-muted">{{ t('edit.sharedDashboardDescription') }}</div>
+            <div class="text-sm text-muted">{{ t('edit.editableMetricsDescription') }}</div>
           </div>
           <div class="text-3xl font-black leading-none">{{ editableMetricWidgets.length }}</div>
         </div>
@@ -820,77 +706,6 @@ onMounted(() => {
         </section>
 
         <section v-else-if="item.value === 'live-metrics'" class="space-y-4">
-          <form
-            class="grid gap-4 rounded-xl border border-default bg-muted/40 p-4"
-            @submit.prevent="createChartWidget"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 class="text-lg font-black">{{ t('edit.chartDesigner') }}</h3>
-                <p class="text-sm text-muted">{{ t('edit.chartDesignerDescription') }}</p>
-              </div>
-              <UButton icon="i-lucide-plus" :label="t('edit.createChart')" type="submit" />
-            </div>
-
-            <div class="grid gap-3 sm:grid-cols-2">
-              <UFormField :label="t('edit.metricKey')">
-                <UInput v-model="chartDraft.label" class="w-full" />
-              </UFormField>
-              <UFormField :label="t('edit.visual')">
-                <USelect
-                  v-model="chartDraft.visual"
-                  class="w-full"
-                  label-key="label"
-                  value-key="value"
-                  :items="chartVisualOptions"
-                />
-              </UFormField>
-            </div>
-
-            <UFormField :label="t('edit.explanation')">
-              <UTextarea v-model="chartDraft.detail" autoresize class="w-full" />
-            </UFormField>
-
-            <div v-if="chartDraft.visual === 'donut'" class="grid gap-3 sm:grid-cols-2">
-              <UFormField :label="t('edit.chartCentralLabel')">
-                <UInput v-model="chartDraft.centralLabel" class="w-full" />
-              </UFormField>
-              <UFormField :label="t('edit.chartCentralSubLabel')">
-                <UInput v-model="chartDraft.centralSubLabel" class="w-full" />
-              </UFormField>
-            </div>
-
-            <div class="grid gap-2">
-              <div
-                v-for="(row, index) in chartDraft.rows"
-                :key="index"
-                class="grid gap-2 sm:grid-cols-[1fr_8rem_auto]"
-              >
-                <UInput v-model="row.label" :placeholder="t('edit.chartLabel')" />
-                <UInputNumber
-                  :model-value="row.value"
-                  @update:model-value="row.value = $event ?? 0"
-                />
-                <UButton
-                  :aria-label="t('edit.delete')"
-                  color="neutral"
-                  icon="i-lucide-trash-2"
-                  variant="ghost"
-                  type="button"
-                  @click="removeDraftChartRow(index)"
-                />
-              </div>
-              <UButton
-                class="justify-self-start"
-                icon="i-lucide-plus"
-                :label="t('edit.addChartRow')"
-                variant="outline"
-                type="button"
-                @click="addDraftChartRow"
-              />
-            </div>
-          </form>
-
           <div class="space-y-3">
             <UCard
               v-for="widget in editableMetricWidgets"
@@ -902,27 +717,8 @@ onMounted(() => {
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div class="flex items-center gap-2">
                     <UBadge color="info" variant="soft">{{ t('edit.sharedDashboard') }}</UBadge>
-                    <UBadge :color="widget.visible ? 'success' : 'neutral'" variant="soft">
-                      {{ widget.visible ? t('edit.visible') : t('edit.hidden') }}
-                    </UBadge>
                   </div>
                   <div class="flex gap-2">
-                    <UButton
-                      :label="widget.visible ? t('edit.hide') : t('edit.show')"
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      @click="setWidgetVisible(widget.id, !widget.visible)"
-                    />
-                    <UButton
-                      :aria-label="t('edit.delete')"
-                      color="error"
-                      icon="i-lucide-trash-2"
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      @click="removeWidget(widget)"
-                    />
                     <UButton :label="t('edit.save')" size="sm" type="submit" />
                   </div>
                 </div>
@@ -939,80 +735,6 @@ onMounted(() => {
                 <UFormField :label="t('edit.explanation')">
                   <UTextarea v-model="widget.detail" autoresize class="w-full" />
                 </UFormField>
-
-                <div
-                  v-if="isChartWidget(widget)"
-                  class="grid gap-3 rounded-md border border-default p-3"
-                >
-                  <div v-if="widget.visual === 'donut'" class="grid gap-3 sm:grid-cols-2">
-                    <UFormField :label="t('edit.chartCentralLabel')">
-                      <UInput v-model="widget.chartOptions.centralLabel" class="w-full" />
-                    </UFormField>
-                    <UFormField :label="t('edit.chartCentralSubLabel')">
-                      <UInput v-model="widget.chartOptions.centralSubLabel" class="w-full" />
-                    </UFormField>
-                  </div>
-
-                  <div class="grid gap-2">
-                    <div
-                      v-for="(row, index) in widget.chartData"
-                      :key="index"
-                      class="grid gap-2 sm:grid-cols-[1fr_8rem_auto]"
-                    >
-                      <UInput v-model="row.label" :placeholder="t('edit.chartLabel')" />
-                      <UInputNumber
-                        :model-value="row.value"
-                        @update:model-value="row.value = $event ?? 0"
-                      />
-                      <UButton
-                        :aria-label="t('edit.delete')"
-                        color="neutral"
-                        icon="i-lucide-trash-2"
-                        variant="ghost"
-                        type="button"
-                        @click="removeChartRow(widget, index)"
-                      />
-                    </div>
-                    <UButton
-                      class="justify-self-start"
-                      icon="i-lucide-plus"
-                      :label="t('edit.addChartRow')"
-                      variant="outline"
-                      type="button"
-                      @click="addChartRow(widget)"
-                    />
-                  </div>
-                </div>
-
-                <div class="grid gap-3 sm:grid-cols-3">
-                  <UFormField :label="t('edit.visual')">
-                    <USelect
-                      v-model="widget.visual"
-                      class="w-full"
-                      label-key="label"
-                      value-key="value"
-                      :items="visualOptions"
-                    />
-                  </UFormField>
-                  <UFormField :label="t('edit.tone')">
-                    <USelect
-                      v-model="widget.tone"
-                      class="w-full"
-                      label-key="label"
-                      value-key="value"
-                      :items="toneOptions"
-                    />
-                  </UFormField>
-                  <UFormField :label="t('edit.numericValue')">
-                    <UInputNumber
-                      class="w-full"
-                      :max="100"
-                      :min="0"
-                      :model-value="widget.numericValue ?? 0"
-                      @update:model-value="widget.numericValue = $event ?? 0"
-                    />
-                  </UFormField>
-                </div>
               </form>
             </UCard>
           </div>

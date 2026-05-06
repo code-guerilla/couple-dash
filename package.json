@@ -17,8 +17,6 @@
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@nuxt/ui": "^4.7.1",
     "@supabase/supabase-js": "^2.105.3",
-    "@unovis/ts": "^1.6.5",
-    "@unovis/vue": "^1.6.5",
     "qrcode": "^1.5.4",
     "slugify": "^1.6.9",
     "supabase": "^2.98.1",

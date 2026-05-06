@@ -1,12 +1,4 @@
-export type WidgetVisual =
-  | 'stat'
-  | 'progress'
-  | 'radial'
-  | 'donut'
-  | 'bar'
-  | 'line'
-  | 'memory'
-  | 'timeline'
+export type WidgetVisual = 'stat' | 'progress' | 'radial' | 'memory' | 'timeline'
 
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 
@@ -48,16 +40,6 @@ export interface TimelineEntry {
   icon: string
 }
 
-export interface ChartDataPoint {
-  label: string
-  value: number
-}
-
-export interface ChartOptions {
-  centralLabel?: string
-  centralSubLabel?: string
-}
-
 export interface DashboardWidget {
   id: string
   coupleId: string
@@ -73,8 +55,6 @@ export interface DashboardWidget {
   tone: AlertSeverity
   visible: boolean
   timelineEntries?: TimelineEntry[]
-  chartData: ChartDataPoint[]
-  chartOptions: ChartOptions
   updatedAt: string
 }
 

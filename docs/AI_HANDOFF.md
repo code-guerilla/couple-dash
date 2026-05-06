@@ -11,7 +11,7 @@ Keep:
 - Private Supabase account-based access.
 - Admin tenant creation and partner invite links.
 - `/display/:coupleSlug` with a QR code to `/edit/:coupleSlug`.
-- `/edit/:coupleSlug` for shared widgets, timeline/chart data, partner status, alerts, and avatar upload.
+- `/edit/:coupleSlug` for fixed display values, timeline milestones, partner status, alerts, and avatar upload.
 - Supabase Realtime refresh for display data.
 - RLS and RPC-first authorization.
 
@@ -26,7 +26,7 @@ Avoid:
 
 - Frontend: Vue 3, Vite, TypeScript, Vue Router, Vue I18n.
 - UI: Nuxt UI Vue plugin and Tailwind CSS v4.
-- Visuals: Unovis chart widgets and `qrcode`.
+- Visuals: `qrcode`.
 - Backend: Supabase Auth, Postgres, RLS, RPC functions, Realtime, Storage.
 - Runtime/scripts: Bun.
 
@@ -40,7 +40,7 @@ Core tables:
 - `couple`: one private dashboard tenant.
 - `partner`: the two partner records, linked to `auth.users` after invite acceptance.
 - `couple_member`: membership bridge for partner/admin access.
-- `dashboard_widget`: shared display widgets.
+- `dashboard_widget`: fixed display widgets and timeline milestones.
 - `couple_alert`: live partner/system alerts.
 - Storage bucket `partner-avatars`: private avatar uploads, read through signed URLs.
 

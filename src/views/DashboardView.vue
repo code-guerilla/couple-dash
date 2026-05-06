@@ -13,6 +13,7 @@ import { hungerLevelLabelForPartner } from '@/data/hungerLevels'
 
 const route = useRoute()
 const { locale, t } = useI18n()
+
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
 const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(

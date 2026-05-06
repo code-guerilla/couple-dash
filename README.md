@@ -9,14 +9,14 @@ The current product direction is a simple v1: Supabase-only authentication, RLS/
 - Vue 3, Vite, TypeScript, Vue Router, Vue I18n
 - Nuxt UI, Tailwind CSS v4, lucide/simple-icons through Nuxt UI icon names
 - Supabase Auth, Postgres, RLS, RPC functions, Realtime, and Storage
-- Unovis for chart widgets and `qrcode` for dashboard edit QR codes
+- `qrcode` for dashboard edit QR codes
 - Bun for package scripts
 
 ## Routes
 
 - `/` lists dashboards linked to the signed-in account.
 - `/display/:coupleSlug` shows the private always-on dashboard display.
-- `/edit/:coupleSlug` edits shared widgets, timeline/chart data, status, alerts, and avatar data.
+- `/edit/:coupleSlug` edits fixed display values, timeline milestones, status, alerts, and avatar data.
 - `/invite/:coupleSlug/:partnerSlug?token=...` claims one partner invite after Supabase sign-in.
 - `/admin`, `/admin/new`, and `/admin/tenants/:tenantId` provision and manage couple tenants.
 
