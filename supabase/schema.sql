@@ -24,8 +24,8 @@ create table if not exists public.partner (
   slug text not null,
   name text not null,
   role text not null default '',
-  accent text not null default 'primary',
-  hunger_level text not null default 'full',
+  accent text not null default 'primary' check (accent in ('primary', 'secondary', 'accent', 'info', 'success', 'warning', 'error')),
+  hunger_level text not null default 'full' check (hunger_level in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical')),
   avatar_path text,
   invite_token_hash text,
   created_at timestamptz not null default now(),
@@ -74,112 +74,6 @@ create table if not exists public.couple_alert (
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day')
 );
-
-alter table public.couple add column if not exists created_by uuid references auth.users(id);
-alter table public.couple drop column if exists anniversary_date;
-alter table public.partner add column if not exists user_id uuid references auth.users(id) on delete set null;
-alter table public.partner add column if not exists hunger_level text not null default 'full';
-alter table public.partner alter column hunger_level set default 'full';
-update public.partner set hunger_level = 'full' where hunger_level is null;
-alter table public.partner alter column hunger_level set not null;
-alter table public.partner add column if not exists avatar_path text;
-alter table public.partner add column if not exists invite_token_hash text;
-alter table public.dashboard_widget add column if not exists visible boolean not null default true;
-alter table public.dashboard_widget add column if not exists timeline_entries jsonb not null default '[]'::jsonb;
-alter table public.dashboard_widget add column if not exists chart_data jsonb not null default '[]'::jsonb;
-alter table public.dashboard_widget add column if not exists chart_options jsonb not null default '{}'::jsonb;
-alter table public.couple_alert add column if not exists triggered_by_partner_id uuid references public.partner(id) on delete set null;
-alter table public.couple_alert add column if not exists expires_at timestamptz not null default (date_trunc('day', now()) + interval '1 day');
-alter table public.dashboard_widget drop constraint if exists dashboard_widget_visual_check;
-alter table public.dashboard_widget drop constraint if exists dashboard_widget_scope_person_check;
-drop policy if exists "Members update shared widgets" on public.dashboard_widget;
-drop policy if exists "Members update own person widgets" on public.dashboard_widget;
-drop policy if exists "Members manage shared dashboard widgets" on public.dashboard_widget;
-drop trigger if exists validate_dashboard_widget_person_trigger on public.dashboard_widget;
-drop function if exists public.validate_dashboard_widget_person();
-drop function if exists public.is_current_partner_for_widget(uuid, uuid);
-drop index if exists dashboard_widget_person_id_idx;
-
-do $$
-begin
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'dashboard_widget'
-      and column_name = 'scope'
-  ) then
-    execute 'update public.dashboard_widget set scope = ''shared'', person_id = null where scope is distinct from ''shared'' or person_id is not null';
-  end if;
-end $$;
-
-with resolved_alert_partner as (
-  select
-    alert.id as alert_id,
-    partner.id as partner_id,
-    partner.name as partner_name
-  from public.couple_alert alert
-  join lateral (
-    select candidate.id, candidate.name
-    from public.partner candidate
-    where candidate.couple_id = alert.couple_id
-    order by
-      case
-        when alert.triggered_by is not null
-          and lower(trim(candidate.name)) = lower(trim(alert.triggered_by)) then 0
-        else 1
-      end,
-      candidate.created_at
-    limit 1
-  ) partner on true
-  where alert.source = 'partner'
-    and alert.triggered_by_partner_id is null
-)
-update public.couple_alert alert
-set triggered_by_partner_id = resolved_alert_partner.partner_id,
-    triggered_by = coalesce(nullif(alert.triggered_by, ''), resolved_alert_partner.partner_name)
-from resolved_alert_partner
-where alert.id = resolved_alert_partner.alert_id;
-
-alter table public.dashboard_widget drop column if exists person_id;
-alter table public.dashboard_widget drop column if exists scope;
-
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'partner_accent_check'
-      and conrelid = 'public.partner'::regclass
-  ) then
-    alter table public.partner
-      add constraint partner_accent_check
-      check (accent in ('primary', 'secondary', 'accent', 'info', 'success', 'warning', 'error'));
-  end if;
-end $$;
-
-alter table public.partner drop constraint if exists partner_hunger_level_check;
-alter table public.partner
-  add constraint partner_hunger_level_check
-  check (hunger_level in ('full', 'snack', 'getting-hungry', 'need-food', 'starving', 'critical'));
-
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'partner_couple_user_unique'
-      and conrelid = 'public.partner'::regclass
-  ) then
-    alter table public.partner
-      add constraint partner_couple_user_unique
-      unique (couple_id, user_id);
-  end if;
-end $$;
-
-alter table public.dashboard_widget
-  add constraint dashboard_widget_visual_check
-  check (visual in ('stat', 'progress', 'radial', 'donut', 'bar', 'line', 'memory', 'timeline'));
 
 create index if not exists couple_slug_idx on public.couple (slug);
 create index if not exists partner_couple_id_idx on public.partner (couple_id);
@@ -276,14 +170,6 @@ begin
   return next;
 end;
 $$;
-
-drop function if exists public.list_my_couples();
-drop function if exists public.admin_list_tenants();
-drop function if exists public.admin_create_tenant(text, text, text, date, date, date, text, text, text, text);
-drop function if exists public.admin_update_tenant(uuid, text, text, text, date, date, date, uuid, text, text, uuid, text, text);
-drop function if exists public.admin_get_tenant(uuid);
-drop function if exists public.update_partner_avatar(uuid, text);
-drop function if exists public.update_partner_hunger_level(uuid, text);
 
 create or replace function public.list_my_couples()
 returns table (
@@ -856,13 +742,6 @@ begin
 end;
 $$;
 
-drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb);
-drop function if exists public.update_dashboard_widget(uuid, text, text, text, text, text, text, numeric, jsonb, jsonb, jsonb);
-drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text);
-drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, text, uuid, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
-drop function if exists public.add_dashboard_widget(uuid, text, text, text, text, integer, numeric, numeric, numeric, text, jsonb, jsonb, jsonb);
-drop function if exists public.delete_dashboard_widget(uuid);
-
 create or replace function public.update_dashboard_widget(
   p_widget_id uuid,
   p_label text default null,
@@ -1075,10 +954,6 @@ begin
 end;
 $$;
 
-drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text);
-drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz);
-drop function if exists public.trigger_couple_alert(uuid, text, text, text, text, text, timestamptz, uuid);
-
 create or replace function public.trigger_couple_alert(
   p_couple_id uuid,
   p_title text,
@@ -1168,31 +1043,6 @@ on conflict (id) do update
 set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
-
-drop policy if exists "App admins view app admins" on public.app_admin;
-drop policy if exists "App admin view app_admin" on public.app_admin;
-drop policy if exists "App admins manage app admins" on public.app_admin;
-drop policy if exists "App admin manage app_admin" on public.app_admin;
-drop policy if exists "Couple visible to member and admin" on public.couple;
-drop policy if exists "App admin manage couple" on public.couple;
-drop policy if exists "Partner visible to member and admin" on public.partner;
-drop policy if exists "App admin manage partner" on public.partner;
-drop policy if exists "Members view couple memberships" on public.couple_member;
-drop policy if exists "Couple member visible to member" on public.couple_member;
-drop policy if exists "App admins manage couple memberships" on public.couple_member;
-drop policy if exists "App admin manage couple_member" on public.couple_member;
-drop policy if exists "Widgets are visible to members" on public.dashboard_widget;
-drop policy if exists "Members update shared widgets" on public.dashboard_widget;
-drop policy if exists "Members update own person widgets" on public.dashboard_widget;
-drop policy if exists "Members manage shared dashboard widgets" on public.dashboard_widget;
-drop policy if exists "App admins manage widgets" on public.dashboard_widget;
-drop policy if exists "Alerts are visible to members" on public.couple_alert;
-drop policy if exists "Members create partner alerts" on public.couple_alert;
-drop policy if exists "App admins manage alerts" on public.couple_alert;
-drop policy if exists "Members read partner avatars" on storage.objects;
-drop policy if exists "Partners upload own avatars" on storage.objects;
-drop policy if exists "Partners update own avatars" on storage.objects;
-drop policy if exists "Partners delete own avatars" on storage.objects;
 
 create policy "App admin view app_admin"
 on public.app_admin for select

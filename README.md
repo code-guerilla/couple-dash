@@ -1,48 +1,48 @@
-# .
+# CoupleDash
 
-This template should help get you started developing with Vue 3 in Vite.
+CoupleDash is a private two-partner dashboard built with Vue and Supabase. It is meant to run indefinitely on a shared display, show live relationship widgets, and expose a QR code that opens the authenticated edit screen for the same couple.
 
-## Recommended IDE Setup
+The current product direction is a simple v1: Supabase-only authentication, RLS/RPC-first authorization, no custom session system, no local demo mode for production behavior, and no legacy compatibility structures.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Stack
 
-## Recommended Browser Setup
+- Vue 3, Vite, TypeScript, Vue Router, Vue I18n
+- Nuxt UI, Tailwind CSS v4, lucide/simple-icons through Nuxt UI icon names
+- Supabase Auth, Postgres, RLS, RPC functions, Realtime, and Storage
+- Unovis for chart widgets and `qrcode` for dashboard edit QR codes
+- Bun for package scripts
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Routes
 
-## Type Support for `.vue` Imports in TS
+- `/` lists dashboards linked to the signed-in account.
+- `/display/:coupleSlug` shows the private always-on dashboard display.
+- `/edit/:coupleSlug` edits shared widgets, timeline/chart data, status, alerts, and avatar data.
+- `/invite/:coupleSlug/:partnerSlug?token=...` claims one partner invite after Supabase sign-in.
+- `/admin`, `/admin/new`, and `/admin/tenants/:tenantId` provision and manage couple tenants.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## Setup
 
 ```sh
 bun install
 ```
 
-### Compile and Hot-Reload for Development
+Create a Supabase project, apply `supabase/schema.sql`, and configure:
+
+```sh
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+See `supabase/README.md` for auth provider and admin setup.
+
+## Development
 
 ```sh
 bun dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
+bun run typecheck
 bun run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## AI Context
 
-```sh
-bun lint
-```
+Use `docs/AI_HANDOFF.md` when starting a new AI chat about this project. It summarizes the current architecture, auth model, data model, and implementation rules.

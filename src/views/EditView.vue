@@ -427,25 +427,8 @@ function persistAlertTemplates() {
   localStorage.setItem(alertTemplateStorageKey.value, JSON.stringify(alertTemplateDrafts.value))
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 function normalizeAlertTitle(text: string) {
-  const title = text.trim()
-  if (!title) {
-    return ''
-  }
-
-  const names = couple.value?.partners.map((item) => item.name).filter(Boolean) ?? []
-  for (const name of names) {
-    const legacyPrefix = new RegExp(`^${escapeRegExp(name)}\\s*:\\s*`, 'i')
-    if (legacyPrefix.test(title)) {
-      return title.replace(legacyPrefix, '').trim()
-    }
-  }
-
-  return title
+  return text.trim()
 }
 
 function addCustomAlertTemplate() {

@@ -1,6 +1,8 @@
 # Supabase setup
 
-1. Create a Supabase project.
+CoupleDash uses Supabase Auth, Postgres, RLS, RPC functions, Realtime, and Storage. Treat `schema.sql` as the fresh v1 baseline rather than a legacy migration script.
+
+1. Create a new Supabase project or reset the target database before applying the baseline.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `.env.example`.
 4. Enable Google in Supabase Auth providers:
@@ -23,4 +25,4 @@ The frontend routes are private by design:
 - `/edit/:slug` requires a linked partner session.
 - `/admin` calls `is_app_admin()`.
 
-Without Supabase env vars the app keeps local demo mode for UI development only. Do not use local mode for a real private dashboard.
+Without Supabase env vars, private dashboard behavior is unavailable. Configure Supabase before testing real auth, tenant, Realtime, or Storage flows.
