@@ -74,18 +74,22 @@ create table if not exists public.couple_alert (
 );
 
 create index if not exists couple_slug_idx on public.couple (slug);
+create index if not exists couple_created_by_idx on public.couple (created_by);
 create index if not exists partner_couple_id_idx on public.partner (couple_id);
 create index if not exists partner_user_id_idx on public.partner (user_id);
 create index if not exists partner_avatar_path_idx on public.partner (avatar_path) where avatar_path is not null;
 create index if not exists couple_member_user_id_idx on public.couple_member (user_id);
 create index if not exists couple_member_couple_id_idx on public.couple_member (couple_id);
+create index if not exists couple_member_partner_id_idx on public.couple_member (partner_id);
 create index if not exists dashboard_widget_couple_sort_idx on public.dashboard_widget (couple_id, sort_order);
 create index if not exists couple_alert_couple_active_created_idx
   on public.couple_alert (couple_id, active, created_at desc);
 create index if not exists couple_alert_triggered_by_partner_id_idx
   on public.couple_alert (triggered_by_partner_id);
 
-create or replace function public.is_app_admin()
+create schema if not exists private;
+
+create or replace function private.is_app_admin()
 returns boolean
 language sql
 stable
@@ -100,14 +104,14 @@ as '
     );
 ';
 
-create or replace function public.is_couple_member(p_couple_id uuid)
+create or replace function private.is_couple_member(p_couple_id uuid)
 returns boolean
 language sql
 stable
 security definer
 set search_path = ''
 as '
-  select public.is_app_admin()
+  select private.is_app_admin()
     or (
       auth.uid() is not null
       and exists (
@@ -117,6 +121,26 @@ as '
           and member.user_id = auth.uid()
       )
     );
+';
+
+create or replace function public.is_app_admin()
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as '
+  select private.is_app_admin();
+';
+
+create or replace function public.is_couple_member(p_couple_id uuid)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as '
+  select private.is_couple_member(p_couple_id);
 ';
 
 create or replace function public.accept_partner_invite(
@@ -182,7 +206,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select
@@ -212,7 +236,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select
@@ -290,7 +314,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select
@@ -333,7 +357,7 @@ create or replace function public.admin_create_tenant(
   partner_b_invite_token text
 )
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -540,7 +564,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select
@@ -588,7 +612,7 @@ create or replace function public.admin_update_tenant(
   p_partner_b_slug text
 ) returns void
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -652,7 +676,7 @@ returns table (
   partner_b_invite_token text
 )
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -715,7 +739,7 @@ $$;
 create or replace function public.admin_delete_tenant(p_couple_id uuid)
 returns void
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 begin
@@ -744,7 +768,7 @@ create or replace function public.update_dashboard_widget(
   p_timeline_entries jsonb default null
 ) returns void
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -780,7 +804,7 @@ $$;
 create or replace function public.set_widget_visible(p_widget_id uuid, p_visible boolean)
 returns void
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -860,7 +884,7 @@ create or replace function public.trigger_couple_alert(
   p_triggered_by_partner_id uuid default null
 ) returns uuid
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -939,91 +963,128 @@ set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
-create policy "App admin view app_admin"
-on public.app_admin for select
-to authenticated
-using (public.is_app_admin());
-
-create policy "App admin manage app_admin"
+create policy "App admins access app_admin"
 on public.app_admin for all
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+using ((select private.is_app_admin()))
+with check ((select private.is_app_admin()));
 
-create policy "Couple visible to member and admin"
+create policy "Couples visible to members and admins"
 on public.couple for select
 to authenticated
-using (public.is_couple_member(id));
+using ((select private.is_app_admin()) or private.is_couple_member(id));
 
-create policy "App admin manage couple"
-on public.couple for all
+create policy "App admins manage couples"
+on public.couple for insert
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+with check ((select private.is_app_admin()));
 
-create policy "Partner visible to member and admin"
+create policy "App admins update couples"
+on public.couple for update
+to authenticated
+using ((select private.is_app_admin()))
+with check ((select private.is_app_admin()));
+
+create policy "App admins delete couples"
+on public.couple for delete
+to authenticated
+using ((select private.is_app_admin()));
+
+create policy "Partners visible to members and admins"
 on public.partner for select
 to authenticated
-using (public.is_couple_member(couple_id));
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id));
 
-create policy "App admin manage partner"
-on public.partner for all
+create policy "App admins manage partners"
+on public.partner for insert
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+with check ((select private.is_app_admin()));
 
-create policy "Couple member visible to member"
+create policy "App admins update partners"
+on public.partner for update
+to authenticated
+using ((select private.is_app_admin()))
+with check ((select private.is_app_admin()));
+
+create policy "App admins delete partners"
+on public.partner for delete
+to authenticated
+using ((select private.is_app_admin()));
+
+create policy "Couple members visible to members and admins"
 on public.couple_member for select
 to authenticated
-using (public.is_couple_member(couple_id));
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id));
 
-create policy "App admin manage couple_member"
-on public.couple_member for all
+create policy "App admins manage couple members"
+on public.couple_member for insert
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+with check ((select private.is_app_admin()));
 
-create policy "Widgets are visible to members"
+create policy "App admins update couple members"
+on public.couple_member for update
+to authenticated
+using ((select private.is_app_admin()))
+with check ((select private.is_app_admin()));
+
+create policy "App admins delete couple members"
+on public.couple_member for delete
+to authenticated
+using ((select private.is_app_admin()));
+
+create policy "Dashboard widgets visible to members and admins"
 on public.dashboard_widget for select
 to authenticated
-using (public.is_couple_member(couple_id));
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id));
 
-create policy "Members update fixed dashboard widgets"
+create policy "Members and admins update dashboard widgets"
 on public.dashboard_widget for update
 to authenticated
-using (public.is_couple_member(couple_id))
-with check (public.is_couple_member(couple_id));
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id))
+with check ((select private.is_app_admin()) or private.is_couple_member(couple_id));
 
-create policy "App admins update widgets"
-on public.dashboard_widget for update
+create policy "App admins insert dashboard widgets"
+on public.dashboard_widget for insert
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+with check ((select private.is_app_admin()));
 
-create policy "Alerts are visible to members"
+create policy "App admins delete dashboard widgets"
+on public.dashboard_widget for delete
+to authenticated
+using ((select private.is_app_admin()));
+
+create policy "Alerts visible to members and admins"
 on public.couple_alert for select
 to authenticated
-using (public.is_couple_member(couple_id));
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id));
 
-create policy "Members create partner alerts"
+create policy "Members and admins create alerts"
 on public.couple_alert for insert
 to authenticated
 with check (
-  source = 'partner'
-  and public.is_couple_member(couple_id)
-  and triggered_by_partner_id in (
-    select member.partner_id
-    from public.couple_member member
-    where member.couple_id = couple_alert.couple_id
-      and member.user_id = auth.uid()
+  (select private.is_app_admin())
+  or (
+    source = 'partner'
+    and private.is_couple_member(couple_id)
+    and triggered_by_partner_id in (
+      select member.partner_id
+      from public.couple_member member
+      where member.couple_id = couple_alert.couple_id
+        and member.user_id = (select auth.uid())
+    )
   )
 );
 
-create policy "App admins manage alerts"
-on public.couple_alert for all
+create policy "App admins update alerts"
+on public.couple_alert for update
 to authenticated
-using (public.is_app_admin())
-with check (public.is_app_admin());
+using ((select private.is_app_admin()))
+with check ((select private.is_app_admin()));
+
+create policy "App admins delete alerts"
+on public.couple_alert for delete
+to authenticated
+using ((select private.is_app_admin()));
 
 create policy "Members read partner avatars"
 on storage.objects for select
@@ -1093,6 +1154,7 @@ using (
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public from anon, authenticated;
 grant usage on schema public to authenticated;
+grant usage on schema private to authenticated;
 
 grant select (user_id, created_at) on public.app_admin to authenticated;
 grant insert, update, delete on public.app_admin to authenticated;
@@ -1106,6 +1168,8 @@ grant select, insert, update, delete on public.couple_member to authenticated;
 grant select, update on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
+grant execute on function private.is_app_admin() to authenticated;
+grant execute on function private.is_couple_member(uuid) to authenticated;
 grant execute on function public.is_app_admin() to authenticated;
 grant execute on function public.is_couple_member(uuid) to authenticated;
 grant execute on function public.accept_partner_invite(text, text, text) to authenticated;

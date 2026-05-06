@@ -19,7 +19,7 @@
     "@supabase/supabase-js": "^2.105.3",
     "qrcode": "^1.5.4",
     "slugify": "^1.6.9",
-    "supabase": "^2.98.1",
+    "supabase": "^2.98.2",
     "vue": "^3.5.33",
     "vue-i18n": "^11.4.0",
     "vue-router": "^5.0.6"
