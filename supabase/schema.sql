@@ -136,7 +136,7 @@ create or replace function public.is_app_admin()
 returns boolean
 language sql
 stable
-security invoker
+security definer
 set search_path = ''
 as '
   select private.is_app_admin();
@@ -370,7 +370,7 @@ create or replace function public.admin_create_tenant(
   partner_b_invite_token text
 )
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -621,7 +621,7 @@ returns table (
 )
 language sql
 stable
-security invoker
+security definer
 set search_path = ''
 as $$
   select
@@ -670,7 +670,7 @@ create or replace function public.admin_update_tenant(
   p_partner_b_slug text
 ) returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -734,7 +734,7 @@ returns table (
   partner_b_invite_token text
 )
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -797,7 +797,7 @@ $$;
 create or replace function public.admin_delete_tenant(p_couple_id uuid)
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 begin
@@ -1276,7 +1276,7 @@ grant select (id, couple_id, slug, name, role, accent, hunger_level, avatar_path
   on public.partner to authenticated;
 grant insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
-grant select, update on public.dashboard_widget to authenticated;
+grant select, insert, update on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function private.is_app_admin() to authenticated;
