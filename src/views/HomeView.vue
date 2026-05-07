@@ -27,19 +27,19 @@ async function loadAccountHome() {
   loadingCouples.value = true
   homeError.value = null
 
-  const [{ data: adminAccess, error: adminError }, { data, error }] = await Promise.all([
-    supabase.rpc('is_app_admin'),
-    supabase.rpc('list_my_couples'),
-  ])
-
-  loadingCouples.value = false
-
+  const { data: adminAccess, error: adminError } = await supabase.rpc('is_app_admin')
   if (adminError) {
     homeError.value = adminError.message
     isAdmin.value = false
   } else {
     isAdmin.value = Boolean(adminAccess)
   }
+
+  const { data, error } = isAdmin.value
+    ? await supabase.rpc('admin_list_tenants')
+    : await supabase.rpc('list_my_couples')
+
+  loadingCouples.value = false
 
   if (error) {
     homeError.value = error.message
@@ -79,26 +79,24 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
       <template v-else-if="isAuthenticated">
         <UAlert v-if="homeError" color="warning" variant="soft" :description="homeError" />
 
-        <UCard
-          v-if="isAdmin"
-          :as="RouterLink"
-          to="/admin"
-          class="transition-transform hover:-translate-y-0.5"
-        >
-          <template #header
-            ><h2 class="font-black">{{ t('home.adminTitle') }}</h2></template
-          >
-          <p class="text-muted">{{ t('home.adminDescription') }}</p>
-        </UCard>
-
         <section class="space-y-3">
           <div>
-            <h2 class="text-2xl font-black">Your couple dashboard</h2>
-            <p class="text-sm text-muted">Only couple dashboards linked to this account appear here.</p>
+            <h2 class="text-2xl font-black">
+              {{ isAdmin ? t('home.adminCouplesTitle') : t('home.accountTitle') }}
+            </h2>
+            <p class="text-sm text-muted">
+              {{ isAdmin ? t('home.adminCouplesDescription') : t('home.accountDescription') }}
+            </p>
           </div>
 
           <div v-if="myCouples.length" class="grid gap-4 md:grid-cols-2">
-            <UCard v-for="couple in myCouples" :key="couple.couple_id">
+            <UCard
+              v-for="couple in myCouples"
+              :key="couple.couple_id"
+              :as="RouterLink"
+              :to="{ name: 'display', params: { coupleSlug: couple.slug } }"
+              class="transition-transform hover:-translate-y-0.5"
+            >
               <template #header>
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -127,17 +125,19 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
                   </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
+                <div v-if="!isAdmin" class="flex flex-wrap gap-2">
                   <UButton
                     icon="i-lucide-monitor"
                     :label="t('home.openDisplay')"
                     :to="{ name: 'display', params: { coupleSlug: couple.slug } }"
+                    @click.stop
                   />
                   <UButton
                     icon="i-lucide-pencil"
                     :label="t('home.editDashboard')"
                     variant="outline"
                     :to="{ name: 'edit', params: { coupleSlug: couple.slug } }"
+                    @click.stop
                   />
                 </div>
               </div>
@@ -148,7 +148,13 @@ watch([initialized, isAuthenticated], () => void loadAccountHome())
             v-else
             color="neutral"
             variant="soft"
-            :description="loadingCouples ? t('home.loadingCouples') : 'No couple dashboard is linked to this account yet. Use your invite link first.'"
+            :description="
+              loadingCouples
+                ? t('home.loadingCouples')
+                : isAdmin
+                  ? t('home.noAdminCouples')
+                  : t('home.noCouples')
+            "
           />
         </section>
       </template>

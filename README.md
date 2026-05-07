@@ -27,7 +27,7 @@ bun install
 ```
 
 Create a Supabase project, apply `supabase/schema.sql`, and configure:
-
+ 
 ```sh
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key

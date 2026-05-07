@@ -225,7 +225,7 @@ returns table (
 )
 language sql
 stable
-security invoker
+security definer
 set search_path = ''
 as $$
   select
@@ -1276,16 +1276,11 @@ revoke all on all functions in schema public from anon, authenticated;
 grant usage on schema public to authenticated;
 grant usage on schema private to authenticated;
 
-grant select (user_id, created_at) on public.app_admin to authenticated;
-grant insert, update, delete on public.app_admin to authenticated;
-grant select (id, slug, name, subtitle, relationship_start, wedding_date, chore_turn_partner_id, created_at)
-  on public.couple to authenticated;
-grant insert, update, delete on public.couple to authenticated;
-grant select (id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at)
-  on public.partner to authenticated;
-grant insert, update, delete on public.partner to authenticated;
+grant select, insert, update, delete on public.app_admin to authenticated;
+grant select, insert, update, delete on public.couple to authenticated;
+grant select, insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
-grant select, insert, update on public.dashboard_widget to authenticated;
+grant select, insert, update, delete on public.dashboard_widget to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function private.is_app_admin() to authenticated;

@@ -38,32 +38,33 @@ export const messages = {
       accessDataText:
         'When the site is hosted, the hosting provider may process technical access data such as IP address, time, requested URL, user agent, and status code to deliver and secure the site.',
       authTitle: 'Authentication and dashboard data',
-      home: {
-        badge: 'Multi-Tenant Dashboards für Paare',
-        description:
-          'Private Paar-Dashboards werden erst geladen, wenn ein verknüpftes Partner- oder Admin-Konto angemeldet ist.',
-        adminDescription: 'Alle Paar-Tenants, Einladungen und Dashboard-Einstellungen verwalten.',
-        displayDescription: 'Öffne dein privates Display mit einem verknüpften Partnerkonto.',
-        partnerDescription:
-          'Partner nutzen /invite-Links einmalig und danach /edit/:slug mit Supabase Auth.',
-        accountTitle: 'Dein Paar-Dashboard',
-        accountDescription:
-          'Hier erscheinen nur Paar-Dashboards, die mit diesem Konto verknüpft sind.',
-        openDisplay: 'Display öffnen',
-        editDashboard: 'Dashboard bearbeiten',
-        loadingCouples: 'Dein Paar-Dashboard wird geladen...',
-        noCouples:
-          'Mit diesem Konto ist noch kein Paar-Dashboard verknüpft. Nutze zuerst deinen Einladungslink.',
-        noSubtitle: 'Kein Untertitel',
-        production: 'Produktion',
-        wedding: 'Hochzeit',
-        partners: 'Partner',
-      },
+      authText:
+        'When Supabase is configured, login, invite, tenant, dashboard, widget, and alert data are processed to provide the private dashboard features. Authentication storage is required for signed-in sessions.',
+      storageTitle: 'Cookies and local storage',
+      storageText:
+        'The app does not use analytics or advertising cookies. With your consent, it stores language and theme settings in localStorage. If you reject optional storage, these settings are not persisted.',
+      thirdPartyTitle: 'Third-party providers',
+      thirdPartyText:
+        'The app does not load external fonts. When Supabase is configured, Supabase provides backend services for authentication and database features.',
+      rightsTitle: 'Your rights',
+      rightsText:
+        'Under the GDPR, you may request access, correction, deletion, restriction of processing, data portability, and objection where legally applicable. You may also complain to a competent supervisory authority.',
+      noLegalAdvice:
+        'This text is not legal advice. Have the final public version reviewed by a qualified lawyer or privacy expert.',
+    },
+    home: {
+      badge: 'Multi-tenant couple dashboards',
+      title: 'CoupleDash',
+      description:
+        'Private couple dashboards are loaded only after a linked partner or app admin account signs in.',
+      adminCouplesTitle: 'All couple dashboards',
+      adminCouplesDescription: 'A read-only overview of every existing couple tenant.',
       accountTitle: 'Your couple dashboard',
       accountDescription: 'Only couple dashboards linked to this account appear here.',
       openDisplay: 'Open display',
       editDashboard: 'Edit dashboard',
       loadingCouples: 'Loading your couple dashboard...',
+      noAdminCouples: 'No couple tenants have been created yet.',
       noCouples: 'No couple dashboard is linked to this account yet. Use your invite link first.',
       noSubtitle: 'No subtitle',
       production: 'Production',
@@ -231,6 +232,7 @@ export const messages = {
   de: {
     nav: {
       home: 'Start',
+      admin: 'Admin',
       language: 'Sprache',
     },
     footer: {
@@ -280,6 +282,8 @@ export const messages = {
         'Private Paar-Dashboards werden erst geladen, wenn ein verknüpftes Partner- oder Admin-Konto angemeldet ist.',
       adminTitle: 'Admin',
       adminDescription: 'Alle Paar-Tenants, Einladungen und Dashboard-Einstellungen verwalten.',
+      adminCouplesTitle: 'Alle Paar-Dashboards',
+      adminCouplesDescription: 'Eine schreibgeschuetzte Uebersicht aller bestehenden Paar-Tenants.',
       displayTitle: 'Display',
       displayDescription: 'Öffne dein privates Display mit einem verknüpften Partnerkonto.',
       partnerTitle: 'Partner',
@@ -291,6 +295,7 @@ export const messages = {
       openDisplay: 'Display öffnen',
       editDashboard: 'Dashboard bearbeiten',
       loadingCouples: 'Dein Paar-Dashboard wird geladen...',
+      noAdminCouples: 'Es wurden noch keine Paar-Tenants erstellt.',
       noCouples:
         'Mit diesem Konto ist noch kein Paar-Dashboard verknüpft. Nutze zuerst deinen Einladungslink.',
       noSubtitle: 'Kein Untertitel',

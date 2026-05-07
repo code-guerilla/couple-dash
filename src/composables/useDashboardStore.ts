@@ -133,7 +133,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
   const { data: couple, error: coupleError } = await supabase
     .from('couple')
     .select(
-      'id, slug, name, subtitle, relationship_start, wedding_date, chore_turn_partner_id, created_at, partner(id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at)',
+      'id, slug, name, subtitle, relationship_start, wedding_date, chore_turn_partner_id, created_at',
     )
     .eq('slug', coupleSlug)
     .single()
@@ -145,26 +145,37 @@ async function loadSupabaseCouple(coupleSlug: string) {
     return
   }
 
-  const [{ data: widgets, error: widgetsError }, { data: alerts, error: alertsError }] =
-    await Promise.all([
-      supabase.from('dashboard_widget').select('*').eq('couple_id', couple.id).order('sort_order'),
-      supabase
-        .from('couple_alert')
-        .select('*')
-        .eq('couple_id', couple.id)
-        .eq('active', true)
-        .order('created_at', { ascending: false }),
-    ])
+  const [
+    { data: partners, error: partnersError },
+    { data: widgets, error: widgetsError },
+    { data: alerts, error: alertsError },
+  ] = await Promise.all([
+    supabase
+      .from('partner')
+      .select('id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at')
+      .eq('couple_id', couple.id)
+      .order('created_at'),
+    supabase.from('dashboard_widget').select('*').eq('couple_id', couple.id).order('sort_order'),
+    supabase
+      .from('couple_alert')
+      .select('*')
+      .eq('couple_id', couple.id)
+      .eq('active', true)
+      .order('created_at', { ascending: false }),
+  ])
 
-  if (widgetsError || alertsError) {
+  if (partnersError || widgetsError || alertsError) {
     error.value = mapSupabaseError(
-      widgetsError?.message ?? alertsError?.message ?? t('dashboard.supabaseLoadFailed'),
+      partnersError?.message ??
+        widgetsError?.message ??
+        alertsError?.message ??
+        t('dashboard.supabaseLoadFailed'),
     )
     loading.value = false
     return
   }
 
-  const partnerRows = (couple.partner ?? []) as Record<string, unknown>[]
+  const partnerRows = (partners ?? []) as Record<string, unknown>[]
   const signedAvatarUrls = new Map(
     await Promise.all(
       partnerRows.map(async (partner) => {
