@@ -51,14 +51,14 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
           <h2 class="text-xl font-black">{{ panelTitle }}</h2>
           <p class="text-sm text-muted">{{ panelDescription }}</p>
         </div>
-        <UBadge color="warning" variant="soft">{{ t('hunger.live') }}</UBadge>
+        <UBadge color="primary" variant="soft">{{ t('hunger.live') }}</UBadge>
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
         <div
           v-for="partner in partners"
           :key="partner.id"
-          class="grid gap-3 rounded-md border border-default bg-muted/40 p-3"
+          class="grid gap-3 rounded-md border border-primary/15 bg-primary/5 p-3"
         >
           <div class="flex items-center gap-3">
             <UAvatar
@@ -66,7 +66,7 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
               :text="partner.avatarUrl ? undefined : partner.avatarFallback"
               :alt="partner.name"
               size="lg"
-              class="ring ring-default"
+              class="ring ring-primary/30"
             />
             <div class="min-w-0">
               <div class="text-sm font-semibold text-muted">

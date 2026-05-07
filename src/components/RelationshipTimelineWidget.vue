@@ -65,7 +65,7 @@ const milestoneSummary = computed(() =>
           <p class="text-xs font-semibold uppercase text-muted">{{ milestoneSummary }}</p>
           <h2 class="text-2xl font-black">{{ widget.label }}</h2>
         </div>
-        <UBadge :color="widget.tone" variant="soft">{{ items.length }}</UBadge>
+        <UBadge color="primary" variant="soft">{{ items.length }}</UBadge>
       </div>
     </template>
 

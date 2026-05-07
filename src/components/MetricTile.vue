@@ -10,15 +10,15 @@ const props = defineProps<{
 const { locale, t } = useI18n()
 
 const toneClasses: Record<DashboardWidget['tone'], string> = {
-  info: 'text-info-500',
-  success: 'text-green-500',
+  info: 'text-primary',
+  success: 'text-primary',
   warning: 'text-amber-500',
   error: 'text-red-500',
 }
 
 const toneColors: Record<DashboardWidget['tone'], string> = {
-  info: 'var(--ui-info)',
-  success: 'var(--ui-success)',
+  info: 'var(--ui-primary)',
+  success: 'var(--ui-primary)',
   warning: 'var(--ui-warning)',
   error: 'var(--ui-error)',
 }

@@ -54,3 +54,29 @@
 @theme {
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
 }
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at 12% 15%,
+      color-mix(in oklab, var(--ui-primary) 24%, transparent),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in oklab, var(--ui-primary) 16%, transparent),
+      transparent 32rem
+    ),
+    linear-gradient(135deg, #10151d 0%, #171a22 46%, #0d1417 100%);
+  background-attachment: fixed;
+}

@@ -6,6 +6,9 @@ import App from './App.vue'
 import { currentLocaleCode, i18n, persistLocale } from './i18n'
 import router from './router'
 
+document.documentElement.classList.add('dark')
+document.documentElement.style.colorScheme = 'dark'
+
 const app = createApp(App)
 app.use(router)
 app.use(ui)

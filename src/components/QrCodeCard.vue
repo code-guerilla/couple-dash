@@ -29,7 +29,7 @@ watchEffect(async () => {
 <template>
   <UCard
     :as="RouterLink"
-    class="transition-transform hover:-translate-y-0.5"
+    class="border-primary/15 bg-primary/5 transition-transform hover:-translate-y-0.5 hover:border-primary/30"
     :to="url"
     :ui="{ body: 'flex items-center gap-3 p-3 sm:p-3' }"
   >

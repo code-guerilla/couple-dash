@@ -8,8 +8,8 @@ defineProps<{
 }>()
 
 const alertClasses: Record<CoupleAlert['severity'], AlertProps['color']> = {
-  info: 'info',
-  success: 'success',
+  info: 'primary',
+  success: 'primary',
   warning: 'warning',
   error: 'error',
 }
@@ -22,7 +22,7 @@ function alertCreator(alert: CoupleAlert) {
 </script>
 
 <template>
-  <section v-if="alerts.length" class="overflow-hidden border-y border-default bg-default/70">
+  <section v-if="alerts.length" class="overflow-hidden border-y border-primary/15 bg-primary/5">
     <div
       v-if="alerts.length <= 2"
       class="alert-strip-track flex w-max min-w-full gap-3 px-4 py-2 sm:px-6 lg:px-8"

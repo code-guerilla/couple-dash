@@ -78,15 +78,15 @@ const weddingCountdown = computed(() => {
 })
 
 const statusColors: Record<string, string> = {
-  'Voll motiviert - Lass uns Ausgehen': 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/30',
-  Kuschelbedürftig: 'bg-rose-500/15 text-rose-200 ring-rose-300/30',
-  Hangry: 'bg-amber-500/15 text-amber-200 ring-amber-300/30',
-  'Im Tunnel': 'bg-cyan-500/15 text-cyan-200 ring-cyan-300/30',
-  'Pause benötigt - Sofazeit': 'bg-violet-500/15 text-violet-200 ring-violet-300/30',
+  'Voll motiviert - Lass uns Ausgehen': 'bg-primary/15 text-primary ring-primary/35',
+  Kuschelbedürftig: 'bg-primary/15 text-primary ring-primary/35',
+  Hangry: 'bg-primary/15 text-primary ring-primary/35',
+  'Im Tunnel': 'bg-primary/15 text-primary ring-primary/35',
+  'Pause benötigt - Sofazeit': 'bg-primary/15 text-primary ring-primary/35',
 }
 
 function statusClass(partner?: Partner) {
-  return partner ? statusColors[partner.hungerLevel] : 'bg-white/10 text-white/70 ring-white/15'
+  return partner ? statusColors[partner.hungerLevel] : 'bg-primary/10 text-white/70 ring-primary/20'
 }
 
 function partnerStatus(partner?: Partner) {
@@ -126,18 +126,18 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 
   <section
     v-else-if="couple"
-    class="-mx-4 -mb-16 -mt-8 min-h-[calc(100vh-5rem)] bg-[radial-gradient(circle_at_12%_15%,rgb(20_184_166_/_0.2),transparent_30rem),radial-gradient(circle_at_88%_18%,rgb(244_63_94_/_0.16),transparent_32rem),linear-gradient(135deg,#10151d_0%,#171a22_46%,#0d1417_100%)] p-4 text-white sm:-mx-6 sm:-mt-10 sm:p-6 lg:-mx-8 lg:p-8"
+    class="min-h-[calc(100vh-4rem)] w-full p-4 text-white sm:p-6 lg:p-8"
   >
     <div
-      class="relative grid min-h-[calc(100vh-10rem)] grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
+      class="relative grid min-h-[calc(100vh-8rem)] w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.05fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
     >
       <UCard
-        class="overflow-hidden border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl xl:col-span-2 xl:row-span-2"
+        class="overflow-hidden border-primary/20 bg-primary/[0.06] shadow-2xl shadow-primary/10 backdrop-blur-xl xl:col-span-2 xl:row-span-2"
         :ui="{ body: 'flex min-h-[23rem] flex-col justify-between gap-8 p-5 sm:p-7 lg:min-h-[25rem]' }"
       >
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="min-w-0">
-            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Private Couple Display</p>
+            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Private Couple Display</p>
             <h1 class="max-w-[14ch] text-5xl font-black leading-[0.9] sm:text-7xl xl:text-8xl">
               {{ couple.name }}
             </h1>
@@ -151,7 +151,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
               :text="firstPartner?.avatarUrl ? undefined : firstPartner?.avatarFallback"
               :alt="firstPartner?.name ?? 'Partner 1'"
               size="xl"
-              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              class="ring-2 ring-primary/50"
               loading="lazy"
             />
             <UAvatar
@@ -159,13 +159,13 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
               :text="secondPartner?.avatarUrl ? undefined : secondPartner?.avatarFallback"
               :alt="secondPartner?.name ?? 'Partner 2'"
               size="xl"
-              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              class="ring-2 ring-primary/50"
               loading="lazy"
             />
           </div>
         </div>
 
-        <div class="grid gap-1 border-t border-white/15 pt-4">
+        <div class="grid gap-1 border-t border-primary/20 pt-4">
           <p class="text-white/60">Gemeinsame Erinnerungen</p>
           <strong class="text-3xl font-black leading-none sm:text-5xl">{{ relationshipUptime }}</strong>
           <span class="text-white/60">
@@ -175,29 +175,24 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       </UCard>
 
       <UCard
-        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
         :ui="{ body: 'flex h-full min-h-48 flex-col justify-between gap-6 p-5 sm:p-6' }"
       >
         <div>
-          <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Seit dem Ja-Wort</p>
+          <p class="mb-2 text-xs font-extrabold uppercase text-primary">Seit dem Ja-Wort</p>
           <h2 class="text-2xl font-black leading-none">{{ weddingCountdown.label }}</h2>
         </div>
-        <div
-          :class="[
-            'text-4xl font-black leading-none sm:text-5xl xl:text-6xl',
-            weddingCountdown.isFuture ? 'text-rose-300' : 'text-teal-300',
-          ]"
-        >
+        <div class="text-4xl font-black leading-none text-primary sm:text-5xl xl:text-6xl">
           {{ weddingCountdown.value }}
         </div>
         <p class="text-white/60">{{ weddingCountdown.date }}</p>
       </UCard>
 
       <UCard
-        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
         :ui="{ body: 'h-full p-5 sm:p-6' }"
       >
-        <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Wer ist dran?</p>
+        <p class="mb-2 text-xs font-extrabold uppercase text-primary">Wer ist dran?</p>
         <h2 class="text-2xl font-black leading-none">Wer macht den Kaffee?</h2>
         <div class="mt-6 flex items-center gap-4">
           <UAvatar
@@ -205,7 +200,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
             :text="choreTurnPartner?.avatarUrl ? undefined : choreTurnPartner?.avatarFallback"
             :alt="choreTurnPartner?.name ?? 'Kein Partner ausgewählt'"
             size="3xl"
-            class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+            class="ring-2 ring-primary/50"
             loading="lazy"
           />
           <div class="min-w-0">
@@ -218,25 +213,25 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       </UCard>
 
       <UCard
-        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl md:col-span-2"
+        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2"
         :ui="{ body: 'grid h-full gap-4 p-5 sm:p-6' }"
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Live Status</p>
+            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Live Status</p>
             <h2 class="text-2xl font-black leading-none">Partner-Akku</h2>
           </div>
-          <span class="mt-2 h-3 w-3 rounded-full bg-teal-300 shadow-[0_0_0_6px_rgb(94_234_212_/_0.16)] animate-pulse" />
+          <span class="mt-2 h-3 w-3 animate-pulse rounded-full bg-primary shadow-lg shadow-primary/30" />
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
-          <article class="flex min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3">
+          <article class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3">
             <UAvatar
               :src="firstPartner?.avatarUrl"
               :text="firstPartner?.avatarUrl ? undefined : firstPartner?.avatarFallback"
               :alt="firstPartner?.name ?? 'Partner 1'"
               size="xl"
-              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              class="ring-2 ring-primary/50"
               loading="lazy"
             />
             <div class="min-w-0">
@@ -252,13 +247,13 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
             </div>
           </article>
 
-          <article class="flex min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3">
+          <article class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3">
             <UAvatar
               :src="secondPartner?.avatarUrl"
               :text="secondPartner?.avatarUrl ? undefined : secondPartner?.avatarFallback"
               :alt="secondPartner?.name ?? 'Partner 2'"
               size="xl"
-              class="shadow-[0_0_0_2px_rgb(255_255_255_/_0.18)]"
+              class="ring-2 ring-primary/50"
               loading="lazy"
             />
             <div class="min-w-0">
@@ -277,30 +272,30 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
       </UCard>
 
       <section
-        class="min-w-0 xl:col-span-3 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-white/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-white/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:backdrop-blur-xl"
+        class="min-w-0 xl:col-span-3 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-primary/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:shadow-primary/10 [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-primary/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:shadow-primary/10 [&_.rounded-xl]:backdrop-blur-xl"
       >
         <RelationshipTimelineWidget v-if="timelineWidget" :widget="timelineWidget" />
         <UCard
           v-else
-          class="h-full border-white/15 bg-white/[0.075] text-white shadow-2xl backdrop-blur-xl"
+          class="h-full border-primary/15 bg-white/[0.075] text-white shadow-2xl shadow-primary/10 backdrop-blur-xl"
           :ui="{ body: 'grid h-full place-content-center gap-2 p-6 text-center' }"
         >
-          <p class="text-xs font-extrabold uppercase text-white/60">Timeline</p>
+          <p class="text-xs font-extrabold uppercase text-primary">Timeline</p>
           <h2 class="text-2xl font-black">Unsere Meilensteine</h2>
           <p class="text-white/60">Die nächsten Erinnerungen warten schon.</p>
         </UCard>
       </section>
 
       <UCard
-        class="border-white/15 bg-white/[0.075] shadow-2xl backdrop-blur-xl"
+        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
         :ui="{ body: 'grid h-full content-start gap-4 p-5 sm:p-6' }"
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="mb-2 text-xs font-extrabold uppercase text-white/60">Alerts</p>
+            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Alerts</p>
             <h2 class="text-2xl font-black leading-none">Live Hinweise</h2>
           </div>
-          <UBadge color="warning" variant="soft">{{ alerts.length }} aktiv</UBadge>
+          <UBadge color="primary" variant="soft">{{ alerts.length }} aktiv</UBadge>
         </div>
         <div
           v-if="alerts.length"
@@ -310,7 +305,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
         </div>
         <div
           v-else
-          class="grid min-h-28 place-content-center gap-1 rounded-md border border-dashed border-white/15 bg-black/10 text-center"
+          class="grid min-h-28 place-content-center gap-1 rounded-md border border-dashed border-primary/20 bg-primary/5 text-center"
         >
           <strong>Alles ruhig.</strong>
           <span class="text-white/60">Keine aktiven Hinweise auf dem Display.</span>

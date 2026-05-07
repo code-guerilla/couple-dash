@@ -16,6 +16,7 @@ const { initialized, isAuthenticated, isSupabaseConfigured, userEmail, signOut }
 const isAdmin = ref(false)
 
 const uiLocale = computed(() => (locale.value === 'de' ? de : en))
+const isDisplayRoute = computed(() => route.name === 'display')
 
 watchEffect(() => {
   document.title = 'CoupleDash'
@@ -86,7 +87,8 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
           @click="signOut"
         />
         <ThemeController />
-        <UColorModeButton />
+        <!-- Dark mode is locked for now. Uncomment when light mode is ready again. -->
+        <!-- <UColorModeButton /> -->
       </template>
 
       <template #body>
@@ -112,7 +114,13 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
     </UHeader>
 
     <UMain>
-      <UContainer class="max-w-7xl py-8 sm:py-10">
+      <UContainer
+        :class="[
+          isDisplayRoute
+            ? 'max-w-none px-0 py-0 sm:px-0 sm:py-0'
+            : 'max-w-7xl py-8 sm:py-10',
+        ]"
+      >
         <RouterView />
       </UContainer>
     </UMain>
