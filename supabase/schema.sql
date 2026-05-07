@@ -26,7 +26,8 @@ create table if not exists public.partner (
   name text not null,
   role text not null default '',
   accent text not null default 'primary' check (accent in ('primary', 'secondary', 'accent', 'info', 'success', 'warning', 'error')),
-  hunger_level text not null default 'Voll motiviert - Lass uns Ausgehen' check (hunger_level in ('Voll motiviert - Lass uns Ausgehen', 'Kuschelbedürftig', 'Hangry', 'Im Tunnel', 'Pause benötigt - Sofazeit')),
+  hunger_level text not null default 'Alles normal' check (hunger_level in ('Absolut vollgefressen', 'Kleiner Snack wär nice', 'Alles normal', 'Hungrig', 'Richtig hungrig', 'Am Verhungern')),
+  battery_level text not null default 'Voll geladen und motiviert - Lass uns was starten' check (battery_level in ('Absolut ausgelaugt - alles absagen', 'Pause benötigt - Sofazeit', 'Kleiner Spaziergang wär super', 'Voll geladen und motiviert - Lass uns was starten')),
   avatar_path text,
   invite_token_hash text,
   created_at timestamptz not null default now(),
@@ -555,11 +556,12 @@ begin
   end if;
 
   if p_hunger_level not in (
-    'Voll motiviert - Lass uns Ausgehen',
-    'Kuschelbedürftig',
-    'Hangry',
-    'Im Tunnel',
-    'Pause benötigt - Sofazeit'
+    'Absolut vollgefressen',
+    'Kleiner Snack wär nice',
+    'Alles normal',
+    'Hungrig',
+    'Richtig hungrig',
+    'Am Verhungern'
   ) then
     raise exception 'Invalid hunger level';
   end if;
@@ -576,6 +578,46 @@ begin
 
   update public.partner
     set hunger_level = p_hunger_level
+  where id = target_partner.id;
+end;
+$$;
+
+create or replace function public.update_partner_battery_level(
+  p_partner_id uuid,
+  p_battery_level text
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_partner public.partner%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_battery_level not in (
+    'Absolut ausgelaugt - alles absagen',
+    'Pause benötigt - Sofazeit',
+    'Kleiner Spaziergang wär super',
+    'Voll geladen und motiviert - Lass uns was starten'
+  ) then
+    raise exception 'Invalid battery level';
+  end if;
+
+  select partner.*
+    into target_partner
+  from public.partner partner
+  where partner.id = p_partner_id
+    and public.is_couple_member(partner.couple_id);
+
+  if target_partner.id is null then
+    raise exception 'Not allowed';
+  end if;
+
+  update public.partner
+    set battery_level = p_battery_level
   where id = target_partner.id;
 end;
 $$;
@@ -650,6 +692,7 @@ as $$
           'role', partner.role,
           'accent', partner.accent,
           'hunger_level', partner.hunger_level,
+          'battery_level', partner.battery_level,
           'avatar_path', partner.avatar_path,
           'accepted', partner.user_id is not null
         )
@@ -1293,6 +1336,7 @@ grant execute on function public.get_couple_invite_status(uuid) to authenticated
 grant execute on function public.create_pending_partner_invite(uuid) to authenticated;
 grant execute on function public.update_partner_avatar(uuid, text) to authenticated;
 grant execute on function public.update_partner_hunger_level(uuid, text) to authenticated;
+grant execute on function public.update_partner_battery_level(uuid, text) to authenticated;
 grant execute on function public.update_couple_settings(uuid, date, date, uuid) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;

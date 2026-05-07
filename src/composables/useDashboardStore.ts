@@ -1,11 +1,13 @@
 import { computed, readonly, ref } from 'vue'
 import { i18n } from '@/i18n'
-import { isHungerLevelValue } from '@/data/hungerLevels'
+import { normalizeBatteryLevelValue } from '@/data/batteryLevels'
+import { normalizeHungerLevelValue } from '@/data/hungerLevels'
 import { partnerAvatarBucket, supabase } from '@/services/supabase'
 import type {
   CoupleAlert,
   DashboardState,
   DashboardWidget,
+  BatteryLevelValue,
   HungerLevelValue,
   TimelineEntry,
 } from '@/types'
@@ -152,7 +154,9 @@ async function loadSupabaseCouple(coupleSlug: string) {
   ] = await Promise.all([
     supabase
       .from('partner')
-      .select('id, couple_id, slug, name, role, accent, hunger_level, avatar_path, created_at')
+      .select(
+        'id, couple_id, slug, name, role, accent, hunger_level, battery_level, avatar_path, created_at',
+      )
       .eq('couple_id', couple.id)
       .order('created_at'),
     supabase.from('dashboard_widget').select('*').eq('couple_id', couple.id).order('sort_order'),
@@ -205,9 +209,8 @@ async function loadSupabaseCouple(coupleSlug: string) {
           name: String(partner.name),
           role: String(partner.role ?? ''),
           accent: String(partner.accent ?? 'primary'),
-          hungerLevel: isHungerLevelValue(partner.hunger_level)
-            ? partner.hunger_level
-            : 'Voll motiviert - Lass uns Ausgehen',
+          hungerLevel: normalizeHungerLevelValue(partner.hunger_level),
+          batteryLevel: normalizeBatteryLevelValue(partner.battery_level),
           avatarPath: partner.avatar_path ? String(partner.avatar_path) : undefined,
           avatarUrl: signedAvatarUrls.get(String(partner.id)),
           avatarFallback: partnerAvatarFallbacks[index],
@@ -345,6 +348,23 @@ export function useDashboardStore(coupleSlug?: string) {
     await loadCouple()
   }
 
+  async function updatePartnerBatteryLevel(partnerId: string, batteryLevel: BatteryLevelValue) {
+    if (!supabase) {
+      throw new Error(t('dashboard.supabaseRequired'))
+    }
+
+    const { error: updateError } = await supabase.rpc('update_partner_battery_level', {
+      p_partner_id: partnerId,
+      p_battery_level: batteryLevel,
+    })
+
+    if (updateError) {
+      throw new Error(mapSupabaseError(updateError.message))
+    }
+
+    await loadCouple()
+  }
+
   async function updateCoupleSettings(patch: {
     relationshipStart: string
     weddingDate: string
@@ -443,6 +463,7 @@ export function useDashboardStore(coupleSlug?: string) {
     updateCoupleSettings,
     updateWidget,
     updatePartnerHungerLevel,
+    updatePartnerBatteryLevel,
     setWidgetVisible,
     triggerAlert,
     setAlertActive,

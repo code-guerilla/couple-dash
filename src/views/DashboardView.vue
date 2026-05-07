@@ -8,8 +8,8 @@ import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
-import { hungerLevelLabelForPartner } from '@/data/hungerLevels'
-import type { Partner } from '@/types'
+import { batteryLevelLabelForPartner, normalizeBatteryLevelValue } from '@/data/batteryLevels'
+import type { BatteryLevelValue, Partner } from '@/types'
 
 const route = useRoute()
 const { locale, t } = useI18n()
@@ -31,6 +31,39 @@ const secondPartner = computed(() => couple.value?.partners[1])
 const choreTurnPartner = computed(() =>
   couple.value?.partners.find((partner) => partner.id === couple.value?.choreTurnPartnerId),
 )
+const alternateChorePartner = computed(() =>
+  couple.value?.partners.find((partner) => partner.id !== couple.value?.choreTurnPartnerId),
+)
+const isRightPartnerTurn = computed(
+  () => !!secondPartner.value && choreTurnPartner.value?.id === secondPartner.value.id,
+)
+
+const choreQuestions = computed(() => [
+  {
+    id: 'lotte',
+    question: 'Wer geht mit dem Hund Lotte?',
+    icon: 'i-lucide-dog',
+    partner: choreTurnPartner.value,
+  },
+  {
+    id: 'cooking',
+    question: 'Wer ist mit Kochen dran?',
+    icon: 'i-lucide-cooking-pot',
+    partner: alternateChorePartner.value ?? choreTurnPartner.value,
+  },
+  {
+    id: 'bathroom',
+    question: 'Wer macht das Bad sauber?',
+    icon: 'i-lucide-bath',
+    partner: choreTurnPartner.value,
+  },
+  {
+    id: 'trash',
+    question: 'Wer bringt den Müll raus?',
+    icon: 'i-lucide-trash-2',
+    partner: alternateChorePartner.value ?? choreTurnPartner.value,
+  },
+])
 
 const relationshipUptime = computed(() => {
   if (!couple.value) {
@@ -77,20 +110,45 @@ const weddingCountdown = computed(() => {
   }
 })
 
-const statusColors: Record<string, string> = {
-  'Voll motiviert - Lass uns Ausgehen': 'bg-primary/15 text-primary ring-primary/35',
-  Kuschelbedürftig: 'bg-primary/15 text-primary ring-primary/35',
-  Hangry: 'bg-primary/15 text-primary ring-primary/35',
-  'Im Tunnel': 'bg-primary/15 text-primary ring-primary/35',
+const statusColors: Record<BatteryLevelValue, string> = {
+  'Absolut ausgelaugt - alles absagen': 'bg-primary/15 text-primary ring-primary/35',
   'Pause benötigt - Sofazeit': 'bg-primary/15 text-primary ring-primary/35',
+  'Kleiner Spaziergang wär super': 'bg-primary/15 text-primary ring-primary/35',
+  'Voll geladen und motiviert - Lass uns was starten': 'bg-primary/15 text-primary ring-primary/35',
+}
+
+const batteryIcons: Record<BatteryLevelValue, string> = {
+  'Absolut ausgelaugt - alles absagen': 'i-lucide-battery',
+  'Pause benötigt - Sofazeit': 'i-lucide-battery',
+  'Kleiner Spaziergang wär super': 'i-lucide-battery-medium',
+  'Voll geladen und motiviert - Lass uns was starten': 'i-lucide-battery-full',
+}
+
+const batteryLevels: Record<BatteryLevelValue, string> = {
+  'Absolut ausgelaugt - alles absagen': 'Leer',
+  'Pause benötigt - Sofazeit': 'Niedrig',
+  'Kleiner Spaziergang wär super': 'Mittel',
+  'Voll geladen und motiviert - Lass uns was starten': 'Voll',
 }
 
 function statusClass(partner?: Partner) {
-  return partner ? statusColors[partner.hungerLevel] : 'bg-primary/10 text-white/70 ring-primary/20'
+  return partner
+    ? statusColors[normalizeBatteryLevelValue(partner.batteryLevel)]
+    : 'bg-primary/10 text-white/70 ring-primary/20'
 }
 
 function partnerStatus(partner?: Partner) {
-  return partner ? hungerLevelLabelForPartner(partner) : 'Status offen'
+  return partner ? batteryLevelLabelForPartner(partner) : 'Status offen'
+}
+
+function partnerBatteryIcon(partner?: Partner) {
+  return partner
+    ? batteryIcons[normalizeBatteryLevelValue(partner.batteryLevel)]
+    : 'i-lucide-battery'
+}
+
+function partnerBatteryLevel(partner?: Partner) {
+  return partner ? batteryLevels[normalizeBatteryLevelValue(partner.batteryLevel)] : 'Offen'
 }
 
 async function loadDisplay() {
@@ -126,14 +184,23 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 
   <section
     v-else-if="couple"
-    class="min-h-[calc(100vh-4rem)] w-full p-4 text-white sm:p-6 lg:p-8"
+    class="min-h-[calc(100vh-4rem)] w-full space-y-4 p-4 text-white sm:p-6 lg:p-8"
   >
     <div
-      class="relative grid min-h-[calc(100vh-8rem)] w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.05fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
+      v-if="alerts.length"
+      class="-mx-4 sm:-mx-6 lg:-mx-8 [&_.border-y]:border-primary/20 [&_.border-y]:bg-primary/[0.08]"
+    >
+      <AlertFeed :alerts="alerts" />
+    </div>
+
+    <div
+      class="relative grid min-h-[calc(100vh-10rem)] w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.05fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
     >
       <UCard
         class="overflow-hidden border-primary/20 bg-primary/[0.06] shadow-2xl shadow-primary/10 backdrop-blur-xl xl:col-span-2 xl:row-span-2"
-        :ui="{ body: 'flex min-h-[23rem] flex-col justify-between gap-8 p-5 sm:p-7 lg:min-h-[25rem]' }"
+        :ui="{
+          body: 'flex min-h-[23rem] flex-col justify-between gap-8 p-5 sm:p-7 lg:min-h-[25rem]',
+        }"
       >
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="min-w-0">
@@ -167,7 +234,9 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 
         <div class="grid gap-1 border-t border-primary/20 pt-4">
           <p class="text-white/60">Gemeinsame Erinnerungen</p>
-          <strong class="text-3xl font-black leading-none sm:text-5xl">{{ relationshipUptime }}</strong>
+          <strong class="text-3xl font-black leading-none sm:text-5xl">{{
+            relationshipUptime
+          }}</strong>
           <span class="text-white/60">
             Seit {{ new Date(couple.relationshipStart).toLocaleDateString(locale) }}
           </span>
@@ -192,22 +261,119 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
         class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
         :ui="{ body: 'h-full p-5 sm:p-6' }"
       >
-        <p class="mb-2 text-xs font-extrabold uppercase text-primary">Wer ist dran?</p>
-        <h2 class="text-2xl font-black leading-none">Wer macht den Kaffee?</h2>
-        <div class="mt-6 flex items-center gap-4">
-          <UAvatar
-            :src="choreTurnPartner?.avatarUrl"
-            :text="choreTurnPartner?.avatarUrl ? undefined : choreTurnPartner?.avatarFallback"
-            :alt="choreTurnPartner?.name ?? 'Kein Partner ausgewählt'"
-            size="3xl"
-            class="ring-2 ring-primary/50"
-            loading="lazy"
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Wer macht den Kaffee?</p>
+            <h2 class="text-2xl font-black leading-none">Wer ist dran?</h2>
+          </div>
+          <UIcon name="i-lucide-coffee" class="mt-1 size-7 text-primary" />
+        </div>
+
+        <div class="mt-5 grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-2">
+          <article
+            v-for="(partner, index) in [firstPartner, secondPartner]"
+            :key="partner?.id ?? `missing-partner-${index}`"
+            :class="[
+              'relative grid min-h-36 min-w-0 place-items-center gap-2 rounded-md border p-3 text-center transition',
+              partner?.id === choreTurnPartner?.id
+                ? 'border-primary/60 bg-primary/20 shadow-lg shadow-primary/15'
+                : 'border-primary/15 bg-black/15 opacity-70',
+            ]"
+          >
+            <UIcon
+              v-if="partner?.id === choreTurnPartner?.id"
+              name="i-lucide-crown"
+              class="absolute right-2 top-2 size-5 text-primary"
+            />
+            <UAvatar
+              :src="partner?.avatarUrl"
+              :text="partner?.avatarUrl ? undefined : partner?.avatarFallback"
+              :alt="partner?.name ?? 'Partner'"
+              size="xl"
+              :class="[
+                'ring-2',
+                partner?.id === choreTurnPartner?.id ? 'ring-primary/70' : 'ring-white/15',
+              ]"
+              loading="lazy"
+            />
+            <div class="min-w-0">
+              <p class="truncate text-lg font-black leading-tight">
+                {{ partner?.name ?? 'Offen' }}
+              </p>
+              <p
+                :class="[
+                  'text-xs font-extrabold uppercase',
+                  partner?.id === choreTurnPartner?.id ? 'text-primary' : 'text-white/45',
+                ]"
+              >
+                {{ partner?.id === choreTurnPartner?.id ? 'Dran' : 'Pause' }}
+              </p>
+            </div>
+          </article>
+
+          <div class="grid place-items-center">
+            <div
+              class="grid size-12 place-items-center rounded-full border border-primary/35 bg-black/25 shadow-inner shadow-primary/10"
+              aria-hidden="true"
+            >
+              <UIcon name="i-lucide-repeat-2" class="size-6 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-2">
+          <article
+            v-for="item in choreQuestions"
+            :key="item.id"
+            class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-primary/15 bg-black/15 px-3 py-2"
+          >
+            <UIcon :name="item.icon" class="size-5 text-primary" />
+            <p class="min-w-0 truncate text-sm font-semibold text-white/75">{{ item.question }}</p>
+            <div class="flex min-w-0 items-center gap-1.5">
+              <UIcon name="i-lucide-crown" class="size-4 text-primary" />
+              <span class="max-w-24 truncate text-sm font-black text-white">
+                {{ item.partner?.name ?? 'Offen' }}
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <div
+          class="mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-primary/15 bg-black/15 px-3 py-3"
+        >
+          <div
+            :class="[
+              'flex min-w-0 items-center justify-end gap-1.5 text-sm font-black',
+              !isRightPartnerTurn && choreTurnPartner ? 'text-primary' : 'text-white/45',
+            ]"
+          >
+            <span class="truncate">{{ firstPartner?.name ?? 'Links' }}</span>
+            <UIcon
+              v-if="!isRightPartnerTurn && choreTurnPartner"
+              name="i-lucide-crown"
+              class="size-4 shrink-0"
+            />
+          </div>
+          <USwitch
+            :model-value="isRightPartnerTurn"
+            disabled
+            checked-icon="i-lucide-arrow-right"
+            unchecked-icon="i-lucide-arrow-left"
+            size="xl"
+            :aria-label="`Gewinner: ${choreTurnPartner?.name ?? 'offen'}`"
           />
-          <div class="min-w-0">
-            <p class="truncate text-3xl font-black leading-none">
-              {{ choreTurnPartner?.name ?? 'Noch niemand' }}
-            </p>
-            <span class="text-white/60">Aktuelle Kaffee-Schicht</span>
+          <div
+            :class="[
+              'flex min-w-0 items-center gap-1.5 text-sm font-black',
+              isRightPartnerTurn && choreTurnPartner ? 'text-primary' : 'text-white/45',
+            ]"
+          >
+            <UIcon
+              v-if="isRightPartnerTurn && choreTurnPartner"
+              name="i-lucide-crown"
+              class="size-4 shrink-0"
+            />
+            <span class="truncate">{{ secondPartner?.name ?? 'Rechts' }}</span>
           </div>
         </div>
       </UCard>
@@ -221,11 +387,15 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
             <p class="mb-2 text-xs font-extrabold uppercase text-primary">Live Status</p>
             <h2 class="text-2xl font-black leading-none">Partner-Akku</h2>
           </div>
-          <span class="mt-2 h-3 w-3 animate-pulse rounded-full bg-primary shadow-lg shadow-primary/30" />
+          <span
+            class="mt-2 h-3 w-3 animate-pulse rounded-full bg-primary shadow-lg shadow-primary/30"
+          />
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
-          <article class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3">
+          <article
+            class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3"
+          >
             <UAvatar
               :src="firstPartner?.avatarUrl"
               :text="firstPartner?.avatarUrl ? undefined : firstPartner?.avatarFallback"
@@ -236,18 +406,29 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
             />
             <div class="min-w-0">
               <h3 class="truncate text-xl font-black">{{ firstPartner?.name ?? 'Partner 1' }}</h3>
-              <span
-                :class="[
-                  'mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
-                  statusClass(firstPartner),
-                ]"
-              >
-                {{ partnerStatus(firstPartner) }}
-              </span>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  :class="[
+                    'inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
+                    statusClass(firstPartner),
+                  ]"
+                >
+                  {{ partnerStatus(firstPartner) }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-extrabold uppercase text-primary ring-1 ring-primary/25"
+                  :aria-label="`Akku: ${partnerBatteryLevel(firstPartner)}`"
+                >
+                  <UIcon :name="partnerBatteryIcon(firstPartner)" class="size-5 text-primary" />
+                  {{ partnerBatteryLevel(firstPartner) }}
+                </span>
+              </div>
             </div>
           </article>
 
-          <article class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3">
+          <article
+            class="flex min-w-0 items-center gap-3 rounded-md border border-primary/15 bg-black/15 p-3"
+          >
             <UAvatar
               :src="secondPartner?.avatarUrl"
               :text="secondPartner?.avatarUrl ? undefined : secondPartner?.avatarFallback"
@@ -258,14 +439,23 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
             />
             <div class="min-w-0">
               <h3 class="truncate text-xl font-black">{{ secondPartner?.name ?? 'Partner 2' }}</h3>
-              <span
-                :class="[
-                  'mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
-                  statusClass(secondPartner),
-                ]"
-              >
-                {{ partnerStatus(secondPartner) }}
-              </span>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  :class="[
+                    'inline-flex max-w-full rounded-full px-3 py-1 text-sm font-extrabold leading-tight shadow-[inset_0_0_0_1px_currentColor]',
+                    statusClass(secondPartner),
+                  ]"
+                >
+                  {{ partnerStatus(secondPartner) }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-extrabold uppercase text-primary ring-1 ring-primary/25"
+                  :aria-label="`Akku: ${partnerBatteryLevel(secondPartner)}`"
+                >
+                  <UIcon :name="partnerBatteryIcon(secondPartner)" class="size-5 text-primary" />
+                  {{ partnerBatteryLevel(secondPartner) }}
+                </span>
+              </div>
             </div>
           </article>
         </div>
@@ -285,32 +475,6 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
           <p class="text-white/60">Die nächsten Erinnerungen warten schon.</p>
         </UCard>
       </section>
-
-      <UCard
-        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
-        :ui="{ body: 'grid h-full content-start gap-4 p-5 sm:p-6' }"
-      >
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Alerts</p>
-            <h2 class="text-2xl font-black leading-none">Live Hinweise</h2>
-          </div>
-          <UBadge color="primary" variant="soft">{{ alerts.length }} aktiv</UBadge>
-        </div>
-        <div
-          v-if="alerts.length"
-          class="[&_.alert-strip-track]:grid [&_.alert-strip-track]:min-w-0 [&_.alert-strip-track]:animate-none [&_.alert-strip-track]:p-0 [&_.border-y]:border-0 [&_.border-y]:bg-transparent"
-        >
-          <AlertFeed :alerts="alerts" />
-        </div>
-        <div
-          v-else
-          class="grid min-h-28 place-content-center gap-1 rounded-md border border-dashed border-primary/20 bg-primary/5 text-center"
-        >
-          <strong>Alles ruhig.</strong>
-          <span class="text-white/60">Keine aktiven Hinweise auf dem Display.</span>
-        </div>
-      </UCard>
 
       <section class="self-end [&_.rounded-lg]:rounded-md [&_.rounded-xl]:rounded-md">
         <QrCodeCard

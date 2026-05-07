@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthPanel from '@/components/AuthPanel.vue'
+import PartnerBatteryLevelPanel from '@/components/PartnerBatteryLevelPanel.vue'
 import PartnerHungerLevelPanel from '@/components/PartnerHungerLevelPanel.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
 import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
@@ -38,6 +39,7 @@ const {
   updateCoupleSettings,
   updateWidget,
   updatePartnerHungerLevel,
+  updatePartnerBatteryLevel,
   setWidgetVisible,
   triggerAlert,
   setAlertActive,
@@ -78,12 +80,8 @@ const pendingInviteUrl = computed(() => {
   const origin = window.location.origin.replace(/\/$/, '')
   return `${origin}/invite/${pendingInvite.value.couple_slug}/${pendingInvite.value.partner_slug}?token=${pendingInvite.value.invite_token}`
 })
-const editableWidgets = computed(() => widgets.value)
-const editableMetricWidgets = computed(() =>
-  editableWidgets.value.filter((widget) => widget.visual !== 'timeline'),
-)
 const editableTimelineWidgets = computed(() =>
-  editableWidgets.value.filter((widget) => widget.visual === 'timeline'),
+  widgets.value.filter((widget) => widget.visual === 'timeline'),
 )
 const today = new Date().toISOString().slice(0, 10)
 const avatarAccept = partnerAvatarMimeTypes.join(',')
@@ -111,11 +109,6 @@ const editAccordionItems = computed(() => [
         },
       ]
     : []),
-  {
-    label: `${t('edit.editLiveMetrics')} (${editableMetricWidgets.value.length})`,
-    icon: 'i-lucide-list-checks',
-    value: 'live-metrics',
-  },
   {
     label: `${t('edit.alerts')} (${alerts.value.length}/${alertTemplateCount.value})`,
     icon: 'i-lucide-message-circle-warning',
@@ -286,14 +279,6 @@ async function uploadPartnerAvatar() {
   }
 
   uploadingAvatar.value = false
-}
-
-async function saveWidget(widget: DashboardWidget) {
-  await updateWidget(widget.id, {
-    label: widget.label,
-    value: widget.value,
-    detail: widget.detail,
-  })
 }
 
 function addTimelineEntry(widget: DashboardWidget) {
@@ -717,28 +702,12 @@ onMounted(() => {
       :description="t('hunger.description')"
     />
 
-    <div class="grid gap-3 sm:grid-cols-2">
-      <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-4' }">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="text-sm text-muted">{{ t('edit.editableMetrics') }}</div>
-            <div class="text-sm text-muted">{{ t('edit.editableMetricsDescription') }}</div>
-          </div>
-          <div class="text-3xl font-black leading-none">{{ editableMetricWidgets.length }}</div>
-        </div>
-      </UCard>
-      <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-4' }">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="text-sm text-muted">{{ t('edit.alerts') }}</div>
-            <div class="text-sm text-muted">{{ t('edit.customAlert') }}</div>
-          </div>
-          <div class="text-3xl font-black leading-none text-amber-500">
-            {{ alertTemplateCount }}
-          </div>
-        </div>
-      </UCard>
-    </div>
+    <PartnerBatteryLevelPanel
+      :partners="couple.partners"
+      :update-battery-level="updatePartnerBatteryLevel"
+      :title="t('battery.title')"
+      :description="t('battery.description')"
+    />
 
     <UAccordion
       :items="editAccordionItems"
@@ -817,41 +786,6 @@ onMounted(() => {
               </div>
             </form>
           </UCard>
-        </section>
-
-        <section v-else-if="item.value === 'live-metrics'" class="space-y-4">
-          <div class="space-y-3">
-            <UCard
-              v-for="widget in editableMetricWidgets"
-              :key="widget.id"
-              variant="subtle"
-              :ui="{ body: 'p-4 sm:p-4' }"
-            >
-              <form class="grid gap-4" @submit.prevent="saveWidget(widget)">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="flex items-center gap-2">
-                    <UBadge color="info" variant="soft">{{ t('edit.sharedDashboard') }}</UBadge>
-                  </div>
-                  <div class="flex gap-2">
-                    <UButton :label="t('edit.save')" size="sm" type="submit" />
-                  </div>
-                </div>
-
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <UFormField :label="t('edit.metricKey')">
-                    <UInput v-model="widget.label" class="w-full font-semibold" />
-                  </UFormField>
-                  <UFormField :label="t('edit.value')">
-                    <UInput v-model="widget.value" class="w-full text-lg" />
-                  </UFormField>
-                </div>
-
-                <UFormField :label="t('edit.explanation')">
-                  <UTextarea v-model="widget.detail" autoresize class="w-full" />
-                </UFormField>
-              </form>
-            </UCard>
-          </div>
         </section>
 
         <section v-else class="space-y-3">

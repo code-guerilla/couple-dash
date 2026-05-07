@@ -2,16 +2,16 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  hungerLevelLabelForPartner,
-  hungerLevelOptionsForPartner,
-  isHungerLevelValue,
-  normalizeHungerLevelValue,
-} from '@/data/hungerLevels'
-import type { HungerLevelValue, Partner } from '@/types'
+  batteryLevelLabelForPartner,
+  batteryLevelOptionsForPartner,
+  isBatteryLevelValue,
+  normalizeBatteryLevelValue,
+} from '@/data/batteryLevels'
+import type { BatteryLevelValue, Partner } from '@/types'
 
 const props = defineProps<{
   partners: Partner[]
-  updateHungerLevel: (partnerId: string, hungerLevel: HungerLevelValue) => Promise<void>
+  updateBatteryLevel: (partnerId: string, batteryLevel: BatteryLevelValue) => Promise<void>
   title?: string
   description?: string
 }>()
@@ -19,17 +19,17 @@ const props = defineProps<{
 const { t } = useI18n()
 const savingPartnerIds = ref<string[]>([])
 const errorMessage = ref<string | null>(null)
-const panelTitle = computed(() => props.title ?? t('hunger.title'))
-const panelDescription = computed(() => props.description ?? t('hunger.description'))
+const panelTitle = computed(() => props.title ?? t('battery.title'))
+const panelDescription = computed(() => props.description ?? t('battery.description'))
 
 function isSaving(partnerId: string) {
   return savingPartnerIds.value.includes(partnerId)
 }
 
-async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
-  const currentHungerLevel = normalizeHungerLevelValue(partner.hungerLevel)
+async function updatePartnerBatteryLevel(partner: Partner, value: unknown) {
+  const currentBatteryLevel = normalizeBatteryLevelValue(partner.batteryLevel)
 
-  if (!isHungerLevelValue(value) || value === currentHungerLevel) {
+  if (!isBatteryLevelValue(value) || value === currentBatteryLevel) {
     return
   }
 
@@ -37,9 +37,9 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
   savingPartnerIds.value = [...savingPartnerIds.value, partner.id]
 
   try {
-    await props.updateHungerLevel(partner.id, value)
+    await props.updateBatteryLevel(partner.id, value)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : t('hunger.saveFailed')
+    errorMessage.value = error instanceof Error ? error.message : t('battery.saveFailed')
   } finally {
     savingPartnerIds.value = savingPartnerIds.value.filter((id) => id !== partner.id)
   }
@@ -54,7 +54,7 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
           <h2 class="text-xl font-black">{{ panelTitle }}</h2>
           <p class="text-sm text-muted">{{ panelDescription }}</p>
         </div>
-        <UBadge color="primary" variant="soft">{{ t('hunger.live') }}</UBadge>
+        <UBadge color="primary" variant="soft">{{ t('battery.live') }}</UBadge>
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
@@ -73,10 +73,10 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
             />
             <div class="min-w-0">
               <div class="text-sm font-semibold text-muted">
-                {{ partner.name }} - {{ t('hunger.level') }}
+                {{ partner.name }} - {{ t('battery.level') }}
               </div>
               <div class="truncate text-base font-black text-highlighted">
-                {{ hungerLevelLabelForPartner(partner) }}
+                {{ batteryLevelLabelForPartner(partner) }}
               </div>
             </div>
           </div>
@@ -86,10 +86,10 @@ async function updatePartnerHungerLevel(partner: Partner, value: unknown) {
             label-key="label"
             value-key="value"
             :disabled="isSaving(partner.id)"
-            :items="hungerLevelOptionsForPartner()"
+            :items="batteryLevelOptionsForPartner()"
             :loading="isSaving(partner.id)"
-            :model-value="normalizeHungerLevelValue(partner.hungerLevel)"
-            @update:model-value="updatePartnerHungerLevel(partner, $event)"
+            :model-value="normalizeBatteryLevelValue(partner.batteryLevel)"
+            @update:model-value="updatePartnerBatteryLevel(partner, $event)"
           />
         </div>
       </div>

@@ -3,11 +3,18 @@ export type WidgetVisual = 'stat' | 'progress' | 'radial' | 'memory' | 'timeline
 export type AlertSeverity = 'info' | 'success' | 'warning' | 'error'
 
 export type HungerLevelValue =
-  | 'Voll motiviert - Lass uns Ausgehen'
-  | 'Kuschelbedürftig'
-  | 'Hangry'
-  | 'Im Tunnel'
+  | 'Absolut vollgefressen'
+  | 'Kleiner Snack wär nice'
+  | 'Alles normal'
+  | 'Hungrig'
+  | 'Richtig hungrig'
+  | 'Am Verhungern'
+
+export type BatteryLevelValue =
+  | 'Absolut ausgelaugt - alles absagen'
   | 'Pause benötigt - Sofazeit'
+  | 'Kleiner Spaziergang wär super'
+  | 'Voll geladen und motiviert - Lass uns was starten'
 
 export interface Partner {
   id: string
@@ -16,6 +23,7 @@ export interface Partner {
   role: string
   accent: string
   hungerLevel: HungerLevelValue
+  batteryLevel: BatteryLevelValue
   avatarPath?: string
   avatarUrl?: string
   avatarFallback?: string

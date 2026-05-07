@@ -24,52 +24,33 @@ function alertCreator(alert: CoupleAlert) {
 <template>
   <section v-if="alerts.length" class="overflow-hidden border-y border-primary/15 bg-primary/5">
     <div
-      v-if="alerts.length <= 2"
-      class="alert-strip-track flex w-max min-w-full gap-3 px-4 py-2 sm:px-6 lg:px-8"
+      class="alert-strip-track flex w-max min-w-full px-4 py-2 sm:px-6 lg:px-8"
+      aria-label="Live alert feed"
     >
-      <UAlert
-        v-for="alert in alerts"
-        :key="alert.id"
-        :color="alertClasses[alert.severity]"
-        variant="outline"
-        class="w-fit min-w-56 max-w-[min(32rem,calc(100vw-3rem))] shrink-0"
+      <div
+        v-for="loopIndex in 2"
+        :key="loopIndex"
+        class="flex min-w-max shrink-0 items-stretch gap-3 pr-3"
+        :aria-hidden="loopIndex === 2"
       >
-        <template #description>
-          <div class="min-w-0">
-            <!-- Directly using alert.title here -->
-            <h3 class="line-clamp-1 font-bold">{{ alert.title }}</h3>
-            <p class="mt-2 line-clamp-1 text-xs font-semibold opacity-70">
-              {{ alertCreator(alert) }}
-            </p>
-          </div>
-        </template>
-      </UAlert>
+        <UAlert
+          v-for="alert in alerts"
+          :key="`${loopIndex}-${alert.id}`"
+          :color="alertClasses[alert.severity]"
+          variant="outline"
+          class="w-fit min-w-64 max-w-[min(34rem,calc(100vw-3rem))] shrink-0"
+        >
+          <template #description>
+            <div class="min-w-0">
+              <h3 class="line-clamp-1 font-bold">{{ alert.title }}</h3>
+              <p class="mt-2 line-clamp-1 text-xs font-semibold opacity-70">
+                {{ alertCreator(alert) }}
+              </p>
+            </div>
+          </template>
+        </UAlert>
+      </div>
     </div>
-
-    <UMarquee
-      v-else
-      pause-on-hover
-      :overlay="false"
-      :ui="{ root: '[--gap:--spacing(3)] [--duration:64s]', content: 'w-auto py-2' }"
-    >
-      <UAlert
-        v-for="alert in alerts"
-        :key="alert.id"
-        :color="alertClasses[alert.severity]"
-        variant="outline"
-        class="w-64 shrink-0"
-      >
-        <template #description>
-          <div class="min-w-0">
-            <!-- Directly using alert.title here -->
-            <h3 class="line-clamp-1 font-bold">{{ alert.title }}</h3>
-            <p class="mt-2 line-clamp-1 text-xs font-semibold opacity-70">
-              {{ alertCreator(alert) }}
-            </p>
-          </div>
-        </template>
-      </UAlert>
-    </UMarquee>
   </section>
 </template>
 
@@ -84,11 +65,11 @@ function alertCreator(alert: CoupleAlert) {
 
 @keyframes alert-strip-marquee {
   from {
-    transform: translateX(100%);
+    transform: translateX(-50%);
   }
 
   to {
-    transform: translateX(-100%);
+    transform: translateX(0);
   }
 }
 </style>

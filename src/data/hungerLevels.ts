@@ -8,24 +8,46 @@ interface HungerLevelOption {
 }
 
 const hungerLevelValues: HungerLevelValue[] = [
-  'Voll motiviert - Lass uns Ausgehen',
-  'Kuschelbedürftig',
-  'Hangry',
-  'Im Tunnel',
-  'Pause benötigt - Sofazeit',
+  'Absolut vollgefressen',
+  'Kleiner Snack wär nice',
+  'Alles normal',
+  'Hungrig',
+  'Richtig hungrig',
+  'Am Verhungern',
 ]
 
 const genericOptions: HungerLevelOption[] = [
-  {
-    value: 'Voll motiviert - Lass uns Ausgehen',
-    label: 'Voll motiviert - Lass uns Ausgehen',
-  },
-  { value: 'Kuschelbedürftig', label: 'Kuschelbedürftig' },
-  { value: 'Hangry', label: 'Hangry' },
-  { value: 'Im Tunnel', label: 'Im Tunnel' },
-  { value: 'Pause benötigt - Sofazeit', label: 'Pause benötigt - Sofazeit' },
+  { value: 'Absolut vollgefressen', label: 'Absolut vollgefressen' },
+  { value: 'Kleiner Snack wär nice', label: 'Kleiner Snack wär nice' },
+  { value: 'Alles normal', label: 'Alles normal' },
+  { value: 'Hungrig', label: 'Hungrig' },
+  { value: 'Richtig hungrig', label: 'Richtig hungrig' },
+  { value: 'Am Verhungern', label: 'Am Verhungern' },
 ]
-const fallbackHungerLevelLabel = 'Voll motiviert - Lass uns Ausgehen'
+const fallbackHungerLevelLabel = 'Alles normal'
+
+const legacyHungerLevelValues: Record<string, HungerLevelValue> = {
+  'Voll motiviert - Lass uns Ausgehen': 'Alles normal',
+  Kuschelbedürftig: 'Kleiner Snack wär nice',
+  Hangry: 'Richtig hungrig',
+  'Im Tunnel': 'Hungrig',
+  'Pause benötigt - Sofazeit': 'Kleiner Snack wär nice',
+  'Absolut ausgelaugt - alles absagen': 'Am Verhungern',
+  'Kleiner Spaziergang wär super': 'Kleiner Snack wär nice',
+  'Voll geladen und motiviert - Lass uns was starten': 'Alles normal',
+}
+
+export function normalizeHungerLevelValue(value: unknown): HungerLevelValue {
+  if (hungerLevelValues.includes(value as HungerLevelValue)) {
+    return value as HungerLevelValue
+  }
+
+  if (typeof value === 'string' && legacyHungerLevelValues[value]) {
+    return legacyHungerLevelValues[value]
+  }
+
+  return fallbackHungerLevelLabel
+}
 
 export function isHungerLevelValue(value: unknown): value is HungerLevelValue {
   return hungerLevelValues.includes(value as HungerLevelValue)
@@ -37,7 +59,8 @@ export function hungerLevelOptionsForPartner() {
 
 export function hungerLevelLabelForPartner(partner: HungerPartner) {
   return (
-    hungerLevelOptionsForPartner().find((option) => option.value === partner.hungerLevel)?.label ??
-    fallbackHungerLevelLabel
+    hungerLevelOptionsForPartner().find(
+      (option) => option.value === normalizeHungerLevelValue(partner.hungerLevel),
+    )?.label ?? fallbackHungerLevelLabel
   )
 }
