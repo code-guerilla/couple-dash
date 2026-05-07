@@ -7,7 +7,7 @@ import { useSupabaseAuth } from '@/composables/useSupabaseAuth'
 import { supabase, type CreatedTenant } from '@/services/supabase'
 
 const router = useRouter()
-const { initialized, isAuthenticated, isSupabaseConfigured, userEmail, signOut } = useSupabaseAuth()
+const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
 const checking = ref(false)
 const creating = ref(false)
 const isAdmin = ref(false)
@@ -19,7 +19,6 @@ const text = {
   description: 'Create one couple tenant and generate partner invite links.',
   back: 'Back to admin',
   checkAccess: 'Check access',
-  signOut: 'Sign out',
   setupError:
     'The admin tenant SQL has not been applied or Supabase has not reloaded its API schema cache yet. Run supabase/schema.sql in the Supabase SQL editor, then refresh this page.',
   supabaseMissing:
@@ -254,7 +253,6 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
           <p class="text-sm text-muted">{{ text.description }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <UBadge v-if="userEmail" color="neutral" variant="soft">{{ userEmail }}</UBadge>
           <UButton
             icon="i-lucide-arrow-left"
             :label="text.back"
@@ -270,15 +268,6 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
             size="sm"
             type="button"
             @click="checkAdmin"
-          />
-          <UButton
-            icon="i-lucide-log-out"
-            :label="text.signOut"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            type="button"
-            @click="signOut"
           />
         </div>
       </div>

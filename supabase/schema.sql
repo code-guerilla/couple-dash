@@ -175,14 +175,23 @@ begin
   where couple.slug = p_slug
     and partner.slug = p_partner_slug;
 
-  if target_partner.id is null
-    or target_partner.invite_token_hash is null
-    or extensions.crypt(p_invite_token, target_partner.invite_token_hash) <> target_partner.invite_token_hash then
+  if target_partner.id is null then
     raise exception 'Invalid partner invite';
+  end if;
+
+  if target_partner.user_id = auth.uid() then
+    accepted_partner_id := target_partner.id;
+    accepted_couple_id := target_partner.couple_id;
+    return next;
   end if;
 
   if target_partner.user_id is not null and target_partner.user_id <> auth.uid() then
     raise exception 'Partner invite already accepted';
+  end if;
+
+  if target_partner.invite_token_hash is null
+    or extensions.crypt(p_invite_token, target_partner.invite_token_hash) <> target_partner.invite_token_hash then
+    raise exception 'Invalid partner invite';
   end if;
 
   update public.partner

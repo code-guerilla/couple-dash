@@ -21,6 +21,10 @@ const acceptError = ref<string | null>(null)
 const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
 
 async function acceptInvite() {
+  if (accepting.value || accepted.value) {
+    return
+  }
+
   acceptError.value = null
 
   if (!isSupabaseConfigured || !supabase) {
@@ -32,7 +36,9 @@ async function acceptInvite() {
     return
   }
 
-  if (!inviteToken.value) {
+  const token = inviteToken.value.trim()
+
+  if (!token) {
     acceptError.value = t('invite.missingToken')
     return
   }
@@ -41,7 +47,7 @@ async function acceptInvite() {
   const { error } = await supabase.rpc('accept_partner_invite', {
     p_slug: coupleSlug.value,
     p_partner_slug: partnerSlug.value,
-    p_invite_token: inviteToken.value,
+    p_invite_token: token,
   })
   accepting.value = false
 

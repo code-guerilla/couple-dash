@@ -12,7 +12,7 @@ import ThemeController from '@/components/ThemeController.vue'
 
 const route = useRoute()
 const { locale, t } = useI18n()
-const { initialized, isAuthenticated } = useSupabaseAuth()
+const { initialized, isAuthenticated, isSupabaseConfigured, userEmail, signOut } = useSupabaseAuth()
 const isAdmin = ref(false)
 
 const uiLocale = computed(() => (locale.value === 'de' ? de : en))
@@ -67,12 +67,47 @@ watch([initialized, isAuthenticated], () => void checkAdmin())
       <UNavigationMenu :items="items" />
 
       <template #right>
+        <UBadge
+          v-if="isSupabaseConfigured && initialized && isAuthenticated && userEmail"
+          color="neutral"
+          variant="soft"
+          class="hidden sm:inline-flex"
+        >
+          {{ userEmail }}
+        </UBadge>
+        <UButton
+          v-if="isSupabaseConfigured && initialized && isAuthenticated"
+          icon="i-lucide-log-out"
+          color="neutral"
+          variant="ghost"
+          aria-label="Sign out"
+          title="Sign out"
+          type="button"
+          @click="signOut"
+        />
         <ThemeController />
         <UColorModeButton />
       </template>
 
       <template #body>
-        <UNavigationMenu :items="items" orientation="vertical" class="-mx-2.5" />
+        <div class="space-y-4">
+          <UNavigationMenu :items="items" orientation="vertical" class="-mx-2.5" />
+          <div
+            v-if="isSupabaseConfigured && initialized && isAuthenticated"
+            class="flex items-center justify-between gap-3 border-t border-default pt-4"
+          >
+            <UBadge v-if="userEmail" color="neutral" variant="soft">{{ userEmail }}</UBadge>
+            <UButton
+              icon="i-lucide-log-out"
+              label="Sign out"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              type="button"
+              @click="signOut"
+            />
+          </div>
+        </div>
       </template>
     </UHeader>
 
