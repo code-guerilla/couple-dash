@@ -3,8 +3,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
+import AnniversaryCountdownWidget from '@/components/AnniversaryCountdownWidget.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import CoupleChoreTaskWidget from '@/components/CoupleChoreTaskWidget.vue'
+import LoveScoreWidget from '@/components/LoveScoreWidget.vue'
+import MoodWeekWidget from '@/components/MoodWeekWidget.vue'
 import PartnerHungerWidget from '@/components/PartnerHungerWidget.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
@@ -30,46 +33,43 @@ const timelineWidget = computed(() =>
 const firstPartner = computed(() => couple.value?.partners[0])
 const secondPartner = computed(() => couple.value?.partners[1])
 
-const relationshipUptime = computed(() => {
-  if (!couple.value) {
-    return '0 Jahre 0 Tage 0 Std 0 Min'
+function formatDurationShort(ms: number, opts: { years?: boolean; seconds?: boolean } = {}) {
+  const { years = true, seconds = true } = opts
+  let s = Math.max(0, Math.floor(ms / 1000))
+  const parts: string[] = []
+  if (years) {
+    const y = Math.floor(s / 31_536_000)
+    s %= 31_536_000
+    parts.push(`${y}y`)
   }
+  const d = Math.floor(s / 86_400)
+  s %= 86_400
+  parts.push(`${d}d`)
+  const h = Math.floor(s / 3_600)
+  s %= 3_600
+  parts.push(`${h}h`)
+  const m = Math.floor(s / 60)
+  s %= 60
+  parts.push(`${m}m`)
+  if (seconds) parts.push(`${s}s`)
+  return parts.join(' ')
+}
 
+const relationshipUptime = computed(() => {
+  if (!couple.value) return '0y 0d 0h 0m 0s'
   const start = new Date(couple.value.relationshipStart)
-  let seconds = Math.max(0, Math.floor((now.value - start.getTime()) / 1000))
-  const years = Math.floor(seconds / 31_536_000)
-  seconds %= 31_536_000
-  const days = Math.floor(seconds / 86_400)
-  seconds %= 86_400
-  const hours = Math.floor(seconds / 3600)
-  seconds %= 3600
-  const minutes = Math.floor(seconds / 60)
-  seconds %= 60
-
-  return `${years} Jahre ${days} Tage ${hours} Std ${minutes} Min`
+  return formatDurationShort(now.value - start.getTime())
 })
 
 const weddingCountdown = computed(() => {
   if (!couple.value) {
-    return {
-      label: 'Seit dem Ja-Wort:',
-      value: '0 Tage 0 Std 0 Min',
-      date: '',
-      isFuture: false,
-    }
+    return { label: 'Seit dem Ja-Wort:', value: '0d 0h 0m 0s', date: '', isFuture: false }
   }
-
   const wedding = new Date(couple.value.weddingDate)
   const diff = wedding.getTime() - now.value
-  const absoluteMs = Math.abs(diff)
-  const totalMinutes = Math.floor(absoluteMs / 60_000)
-  const days = Math.floor(totalMinutes / 1_440)
-  const hours = Math.floor((totalMinutes % 1_440) / 60)
-  const minutes = totalMinutes % 60
-
   return {
     label: diff > 0 ? 'Zu dem Ja-Wort noch:' : 'Seit dem Ja-Wort:',
-    value: `${days} Tage ${hours} Std ${minutes} Min`,
+    value: formatDurationShort(Math.abs(diff), { years: false }),
     date: wedding.toLocaleDateString(locale.value),
     isFuture: diff > 0,
   }
@@ -159,10 +159,10 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
     </div>
 
     <div
-      class="relative grid min-h-[calc(100vh-10rem)] w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.05fr)_minmax(18rem,0.9fr)_minmax(18rem,0.85fr)] xl:grid-rows-[minmax(12rem,auto)_minmax(15rem,auto)_minmax(15rem,1fr)_auto]"
+      class="relative grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 xl:auto-rows-[minmax(0,auto)]"
     >
       <UCard
-        class="overflow-hidden border-primary/20 bg-primary/[0.06] shadow-2xl shadow-primary/10 backdrop-blur-xl xl:col-span-2 xl:row-span-2"
+        class="overflow-hidden border-primary/20 bg-primary/[0.06] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2 xl:col-span-2 xl:row-span-2"
         :ui="{
           body: 'flex min-h-[23rem] flex-col justify-between gap-8 p-5 sm:p-7 lg:min-h-[25rem]',
         }"
@@ -210,26 +210,29 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 
       <UCard
         class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
-        :ui="{ body: 'flex h-full min-h-48 flex-col justify-between gap-6 p-5 sm:p-6' }"
+        :ui="{ body: 'flex h-full min-h-48 flex-col justify-between gap-4 p-5 sm:p-6' }"
       >
-        <div>
-          <p class="mb-2 text-xs font-extrabold uppercase text-primary">Seit dem Ja-Wort</p>
-          <h2 class="text-2xl font-black leading-none">{{ weddingCountdown.label }}</h2>
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Seit dem Ja-Wort</p>
+            <h2 class="text-2xl font-black leading-none">{{ weddingCountdown.label }}</h2>
+          </div>
+          <UIcon name="i-lucide-rings" class="mt-1 size-7 text-primary" />
         </div>
-        <div class="text-4xl font-black leading-none text-primary sm:text-5xl xl:text-6xl">
+        <div class="text-3xl font-black leading-none text-primary sm:text-4xl xl:text-5xl">
           {{ weddingCountdown.value }}
         </div>
-        <p class="text-white/60">{{ weddingCountdown.date }}</p>
+        <p class="text-sm text-white/60">{{ weddingCountdown.date }}</p>
       </UCard>
 
-      <CoupleChoreTaskWidget
-        :partners="[firstPartner, secondPartner]"
-        :tasks="choreTasks"
-        :update-task="updateChoreTask"
-      />
+      <LoveScoreWidget />
+
+      <AnniversaryCountdownWidget :wedding-date="couple.weddingDate" :now="now" />
+
+      <MoodWeekWidget />
 
       <UCard
-        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2"
+        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2 xl:col-span-2"
         :ui="{ body: 'grid h-full gap-4 p-5 sm:p-6' }"
       >
         <div class="flex items-start justify-between gap-4">
@@ -313,8 +316,16 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
 
       <PartnerHungerWidget :partners="[firstPartner, secondPartner]" />
 
+      <div class="md:col-span-2 xl:col-span-2 xl:row-span-2">
+        <CoupleChoreTaskWidget
+          :partners="[firstPartner, secondPartner]"
+          :tasks="choreTasks"
+          :update-task="updateChoreTask"
+        />
+      </div>
+
       <section
-        class="min-w-0 xl:col-span-3 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-primary/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:shadow-primary/10 [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-primary/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:shadow-primary/10 [&_.rounded-xl]:backdrop-blur-xl"
+        class="min-w-0 md:col-span-2 xl:col-span-2 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-primary/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:shadow-primary/10 [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-primary/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:shadow-primary/10 [&_.rounded-xl]:backdrop-blur-xl"
       >
         <RelationshipTimelineWidget v-if="timelineWidget" :widget="timelineWidget" />
         <UCard
@@ -328,7 +339,7 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
         </UCard>
       </section>
 
-      <section class="self-end [&_.rounded-lg]:rounded-md [&_.rounded-xl]:rounded-md">
+      <section class="self-end md:col-span-2 xl:col-span-4 xl:flex xl:justify-end [&_.rounded-lg]:rounded-md [&_.rounded-xl]:rounded-md">
         <QrCodeCard
           :label="t('dashboard.editLogin')"
           :person="t('edit.sharedDashboard')"

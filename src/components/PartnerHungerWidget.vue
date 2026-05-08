@@ -13,7 +13,7 @@ function partnerHungerLabel(partner?: Partner) {
 
 <template>
   <UCard
-    class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2"
+    class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2 xl:col-span-2"
     :ui="{ body: 'grid h-full gap-4 p-5 sm:p-6' }"
   >
     <div class="flex items-start justify-between gap-4">

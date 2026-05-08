@@ -12,11 +12,14 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AlertFeed: typeof import('./src/components/AlertFeed.vue')['default']
+    AnniversaryCountdownWidget: typeof import('./src/components/AnniversaryCountdownWidget.vue')['default']
     AppFooter: typeof import('./src/components/AppFooter.vue')['default']
     AuthPanel: typeof import('./src/components/AuthPanel.vue')['default']
     CoupleChoreTaskWidget: typeof import('./src/components/CoupleChoreTaskWidget.vue')['default']
     LocaleSwitcher: typeof import('./src/components/LocaleSwitcher.vue')['default']
+    LoveScoreWidget: typeof import('./src/components/LoveScoreWidget.vue')['default']
     MetricTile: typeof import('./src/components/MetricTile.vue')['default']
+    MoodWeekWidget: typeof import('./src/components/MoodWeekWidget.vue')['default']
     PartnerBatteryLevelPanel: typeof import('./src/components/PartnerBatteryLevelPanel.vue')['default']
     PartnerHungerLevelPanel: typeof import('./src/components/PartnerHungerLevelPanel.vue')['default']
     PartnerHungerWidget: typeof import('./src/components/PartnerHungerWidget.vue')['default']
