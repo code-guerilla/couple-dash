@@ -14,6 +14,7 @@ declare module 'vue' {
     AlertFeed: typeof import('./src/components/AlertFeed.vue')['default']
     AppFooter: typeof import('./src/components/AppFooter.vue')['default']
     AuthPanel: typeof import('./src/components/AuthPanel.vue')['default']
+    CoupleChoreTaskWidget: typeof import('./src/components/CoupleChoreTaskWidget.vue')['default']
     LocaleSwitcher: typeof import('./src/components/LocaleSwitcher.vue')['default']
     MetricTile: typeof import('./src/components/MetricTile.vue')['default']
     PartnerBatteryLevelPanel: typeof import('./src/components/PartnerBatteryLevelPanel.vue')['default']

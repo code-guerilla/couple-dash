@@ -17,7 +17,7 @@ import {
   type CoupleInviteStatus,
   type PendingPartnerInvite,
 } from '@/services/supabase'
-import type { AlertSeverity, DashboardWidget, TimelineEntry } from '@/types'
+import type { AlertSeverity, CoupleChoreTask, DashboardWidget, TimelineEntry } from '@/types'
 
 interface AlertTemplateDraft {
   id: string
@@ -33,11 +33,13 @@ const { initialized, isAuthenticated, isSupabaseConfigured, userId } = useSupaba
 const {
   couple,
   widgets,
+  choreTasks,
   alerts,
   error,
   loadCouple,
   updateCoupleSettings,
   updateWidget,
+  updateChoreTask,
   updatePartnerHungerLevel,
   updatePartnerBatteryLevel,
   setWidgetVisible,
@@ -58,6 +60,9 @@ const uploadingAvatar = ref(false)
 const alertTemplateDrafts = ref<AlertTemplateDraft[]>([])
 const editingAlertTemplateId = ref<string | null>(null)
 const alertTemplateEditTitle = ref('')
+const choreTaskTitleDrafts = ref<Record<string, string>>({})
+const savingChoreTaskIds = ref<string[]>([])
+const choreTaskError = ref<string | null>(null)
 const settingsForm = ref({
   relationshipStart: '',
   weddingDate: '',
@@ -67,9 +72,6 @@ const savingSettings = ref(false)
 const settingsError = ref<string | null>(null)
 const partner = computed(() =>
   couple.value?.partners.find((item) => item.id === currentPartnerId.value),
-)
-const selectedChorePartner = computed(() =>
-  couple.value?.partners.find((item) => item.id === settingsForm.value.choreTurnPartnerId),
 )
 const pendingPartnerName = computed(() => inviteStatus.value?.pending_partner_name ?? null)
 const pendingInviteUrl = computed(() => {
@@ -151,10 +153,46 @@ async function saveSettings() {
   }
 }
 
-async function toggleChorePartner(partnerId: string) {
-  settingsForm.value.choreTurnPartnerId =
-    settingsForm.value.choreTurnPartnerId === partnerId ? null : partnerId
-  await saveSettings()
+function syncChoreTaskDrafts() {
+  choreTaskTitleDrafts.value = Object.fromEntries(
+    choreTasks.value.map((task) => [task.id, task.title]),
+  )
+}
+
+function choreTaskTitle(task: CoupleChoreTask) {
+  return choreTaskTitleDrafts.value[task.id] ?? task.title
+}
+
+function isChoreTaskSaving(taskId: string) {
+  return savingChoreTaskIds.value.includes(taskId)
+}
+
+async function saveChoreTask(task: CoupleChoreTask, assignedPartnerId = task.assignedPartnerId) {
+  const title = choreTaskTitle(task).trim()
+  if (!title) {
+    choreTaskError.value = 'Bitte gib der Aufgabe einen Namen.'
+    return
+  }
+
+  choreTaskError.value = null
+  savingChoreTaskIds.value = [...savingChoreTaskIds.value, task.id]
+
+  try {
+    await updateChoreTask(task.id, { title, assignedPartnerId })
+  } catch (error) {
+    choreTaskError.value =
+      error instanceof Error ? error.message : 'Die Aufgabe konnte nicht gespeichert werden.'
+  } finally {
+    savingChoreTaskIds.value = savingChoreTaskIds.value.filter((id) => id !== task.id)
+  }
+}
+
+async function assignChoreTask(task: CoupleChoreTask, partnerId: string) {
+  if (task.assignedPartnerId === partnerId && choreTaskTitle(task).trim() === task.title) {
+    return
+  }
+
+  await saveChoreTask(task, partnerId)
 }
 async function loadMembership() {
   currentPartnerId.value = null
@@ -514,9 +552,13 @@ async function copyPendingInvite() {
 watch(userId, () => void loadPrivateEditor())
 watch([coupleSlug, alertTemplateOwnerKey], loadAlertTemplates)
 watch(couple, syncSettingsForm)
+watch(choreTasks, syncChoreTaskDrafts)
 
 onMounted(() => {
-  void loadPrivateEditor().then(loadAlertTemplates)
+  void loadPrivateEditor().then(() => {
+    syncChoreTaskDrafts()
+    loadAlertTemplates()
+  })
 })
 </script>
 
@@ -656,43 +698,75 @@ onMounted(() => {
             <UInput v-model="settingsForm.weddingDate" class="w-full" required type="date" />
           </UFormField>
           <UFormField :label="t('edit.sharedMemoryStart')" required>
-            <UInput
-              v-model="settingsForm.relationshipStart"
-              class="w-full"
-              required
-              type="date"
-            />
+            <UInput v-model="settingsForm.relationshipStart" class="w-full" required type="date" />
           </UFormField>
-        </div>
-
-        <div class="grid gap-3">
-          <div>
-            <h3 class="text-base font-black">{{ t('edit.coffeeTurnTitle') }}</h3>
-            <p class="text-sm text-muted">
-              {{ selectedChorePartner?.name ?? t('edit.noCoffeePartner') }}
-            </p>
-          </div>
-          <div class="grid gap-2 sm:grid-cols-2">
-            <UButton
-              v-for="item in couple.partners"
-              :key="item.id"
-              class="justify-center"
-              :color="settingsForm.choreTurnPartnerId === item.id ? 'primary' : 'neutral'"
-              :icon="
-                settingsForm.choreTurnPartnerId === item.id
-                  ? 'i-lucide-toggle-right'
-                  : 'i-lucide-toggle-left'
-              "
-              :label="item.name"
-              :variant="settingsForm.choreTurnPartnerId === item.id ? 'solid' : 'outline'"
-              type="button"
-              @click="toggleChorePartner(item.id)"
-            />
-          </div>
         </div>
 
         <UAlert v-if="settingsError" color="warning" variant="soft" :description="settingsError" />
       </form>
+    </UCard>
+
+    <UCard variant="subtle" :ui="{ body: 'p-4 sm:p-5' }">
+      <div class="grid gap-4">
+        <div>
+          <h2 class="text-xl font-black">Wer ist dran?</h2>
+          <p class="text-sm text-muted">
+            Bearbeite die Aufgaben und weise jede Frage Lisa oder Mykola zu.
+          </p>
+        </div>
+
+        <div class="grid gap-3">
+          <div
+            v-for="task in choreTasks"
+            :key="task.id"
+            class="grid gap-3 rounded-md border border-default bg-muted/40 p-3 lg:grid-cols-[1fr_auto] lg:items-end"
+          >
+            <UFormField label="Aufgabe">
+              <UInput
+                v-model="choreTaskTitleDrafts[task.id]"
+                class="w-full"
+                :disabled="isChoreTaskSaving(task.id)"
+                @keyup.enter="saveChoreTask(task)"
+              />
+            </UFormField>
+
+            <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+              <UButton
+                v-for="item in couple.partners"
+                :key="item.id"
+                class="justify-center"
+                :color="task.assignedPartnerId === item.id ? 'primary' : 'neutral'"
+                :disabled="isChoreTaskSaving(task.id)"
+                :icon="
+                  task.assignedPartnerId === item.id
+                    ? 'i-lucide-toggle-right'
+                    : 'i-lucide-toggle-left'
+                "
+                :label="item.name"
+                :loading="isChoreTaskSaving(task.id)"
+                :variant="task.assignedPartnerId === item.id ? 'solid' : 'outline'"
+                type="button"
+                @click="assignChoreTask(task, item.id)"
+              />
+              <UButton
+                class="justify-center"
+                icon="i-lucide-save"
+                label="Speichern"
+                :loading="isChoreTaskSaving(task.id)"
+                type="button"
+                @click="saveChoreTask(task)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <UAlert
+          v-if="choreTaskError"
+          color="warning"
+          variant="soft"
+          :description="choreTaskError"
+        />
+      </div>
     </UCard>
 
     <PartnerHungerLevelPanel

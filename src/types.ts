@@ -40,6 +40,16 @@ export interface Couple {
   partners: Partner[]
 }
 
+export interface CoupleChoreTask {
+  id: string
+  coupleId: string
+  title: string
+  icon: string
+  assignedPartnerId?: string
+  order: number
+  updatedAt: string
+}
+
 export interface TimelineEntry {
   id: string
   date: string
@@ -89,5 +99,6 @@ export interface CoupleDashboard {
 export interface DashboardState {
   couples: Couple[]
   widgets: DashboardWidget[]
+  choreTasks: CoupleChoreTask[]
   alerts: CoupleAlert[]
 }

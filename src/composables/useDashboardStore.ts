@@ -5,6 +5,7 @@ import { normalizeHungerLevelValue } from '@/data/hungerLevels'
 import { partnerAvatarBucket, supabase } from '@/services/supabase'
 import type {
   CoupleAlert,
+  CoupleChoreTask,
   DashboardState,
   DashboardWidget,
   BatteryLevelValue,
@@ -12,7 +13,7 @@ import type {
   TimelineEntry,
 } from '@/types'
 
-const emptyState: DashboardState = { couples: [], widgets: [], alerts: [] }
+const emptyState: DashboardState = { couples: [], widgets: [], choreTasks: [], alerts: [] }
 const state = ref<DashboardState>(emptyState)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -100,6 +101,18 @@ function mapAlertFromRow(row: Record<string, unknown>): CoupleAlert {
   }
 }
 
+function mapChoreTaskFromRow(row: Record<string, unknown>): CoupleChoreTask {
+  return {
+    id: String(row.id),
+    coupleId: String(row.couple_id),
+    title: String(row.title),
+    icon: String(row.icon || 'i-lucide-circle-help'),
+    assignedPartnerId: row.assigned_partner_id ? String(row.assigned_partner_id) : undefined,
+    order: Number(row.sort_order ?? 0),
+    updatedAt: String(row.updated_at ?? new Date().toISOString()),
+  }
+}
+
 async function createSignedPartnerAvatarUrl(path: string) {
   if (!supabase) {
     return undefined
@@ -150,6 +163,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
   const [
     { data: partners, error: partnersError },
     { data: widgets, error: widgetsError },
+    { data: choreTasks, error: choreTasksError },
     { data: alerts, error: alertsError },
   ] = await Promise.all([
     supabase
@@ -160,6 +174,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
       .eq('couple_id', couple.id)
       .order('created_at'),
     supabase.from('dashboard_widget').select('*').eq('couple_id', couple.id).order('sort_order'),
+    supabase.from('couple_chore_task').select('*').eq('couple_id', couple.id).order('sort_order'),
     supabase
       .from('couple_alert')
       .select('*')
@@ -168,10 +183,11 @@ async function loadSupabaseCouple(coupleSlug: string) {
       .order('created_at', { ascending: false }),
   ])
 
-  if (partnersError || widgetsError || alertsError) {
+  if (partnersError || widgetsError || choreTasksError || alertsError) {
     error.value = mapSupabaseError(
       partnersError?.message ??
         widgetsError?.message ??
+        choreTasksError?.message ??
         alertsError?.message ??
         t('dashboard.supabaseLoadFailed'),
     )
@@ -218,6 +234,7 @@ async function loadSupabaseCouple(coupleSlug: string) {
       },
     ],
     widgets: (widgets ?? []).map(mapWidgetFromRow),
+    choreTasks: (choreTasks ?? []).map(mapChoreTaskFromRow),
     alerts: (alerts ?? []).map(mapAlertFromRow),
   }
 
@@ -269,6 +286,16 @@ function subscribeSupabaseCouple(coupleId: string, coupleSlug: string) {
       {
         event: '*',
         schema: 'public',
+        table: 'couple_chore_task',
+        filter: `couple_id=eq.${coupleId}`,
+      },
+      () => void loadSupabaseCouple(coupleSlug),
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
         table: 'couple_alert',
         filter: `couple_id=eq.${coupleId}`,
       },
@@ -286,6 +313,11 @@ export function useDashboardStore(coupleSlug?: string) {
       .sort((a, b) => a.order - b.order),
   )
   const visibleWidgets = computed(() => widgets.value.filter((item) => item.visible))
+  const choreTasks = computed(() =>
+    state.value.choreTasks
+      .filter((item) => item.coupleId === couple.value?.id)
+      .sort((a, b) => a.order - b.order),
+  )
   const alerts = computed(() =>
     state.value.alerts
       .filter((item) => item.coupleId === couple.value?.id && isAlertVisible(item))
@@ -326,6 +358,27 @@ export function useDashboardStore(coupleSlug?: string) {
     if (updateError) {
       error.value = updateError.message
       throw updateError
+    }
+
+    await loadCouple()
+  }
+
+  async function updateChoreTask(
+    taskId: string,
+    patch: Pick<CoupleChoreTask, 'title'> & { assignedPartnerId?: string },
+  ) {
+    if (!supabase) {
+      throw new Error(t('dashboard.supabaseRequired'))
+    }
+
+    const { error: updateError } = await supabase.rpc('update_couple_chore_task', {
+      p_task_id: taskId,
+      p_title: patch.title,
+      p_assigned_partner_id: patch.assignedPartnerId ?? null,
+    })
+
+    if (updateError) {
+      throw new Error(mapSupabaseError(updateError.message))
     }
 
     await loadCouple()
@@ -456,12 +509,14 @@ export function useDashboardStore(coupleSlug?: string) {
     couple,
     widgets,
     visibleWidgets,
+    choreTasks,
     alerts,
     loading: readonly(loading),
     error: readonly(error),
     loadCouple,
     updateCoupleSettings,
     updateWidget,
+    updateChoreTask,
     updatePartnerHungerLevel,
     updatePartnerBatteryLevel,
     setWidgetVisible,

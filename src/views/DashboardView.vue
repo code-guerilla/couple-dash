@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
+import CoupleChoreTaskWidget from '@/components/CoupleChoreTaskWidget.vue'
 import PartnerHungerWidget from '@/components/PartnerHungerWidget.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
@@ -17,9 +18,8 @@ const { locale, t } = useI18n()
 
 const coupleSlug = computed(() => String(route.params.coupleSlug))
 const { initialized, isAuthenticated, isSupabaseConfigured } = useSupabaseAuth()
-const { couple, visibleWidgets, alerts, loading, error, loadCouple } = useDashboardStore(
-  coupleSlug.value,
-)
+const { couple, visibleWidgets, choreTasks, alerts, loading, error, loadCouple, updateChoreTask } =
+  useDashboardStore(coupleSlug.value)
 const now = ref(Date.now())
 let clockInterval: number | undefined
 
@@ -29,42 +29,6 @@ const timelineWidget = computed(() =>
 
 const firstPartner = computed(() => couple.value?.partners[0])
 const secondPartner = computed(() => couple.value?.partners[1])
-const choreTurnPartner = computed(() =>
-  couple.value?.partners.find((partner) => partner.id === couple.value?.choreTurnPartnerId),
-)
-const alternateChorePartner = computed(() =>
-  couple.value?.partners.find((partner) => partner.id !== couple.value?.choreTurnPartnerId),
-)
-const isRightPartnerTurn = computed(
-  () => !!secondPartner.value && choreTurnPartner.value?.id === secondPartner.value.id,
-)
-
-const choreQuestions = computed(() => [
-  {
-    id: 'lotte',
-    question: 'Wer geht mit dem Hund Lotte?',
-    icon: 'i-lucide-dog',
-    partner: choreTurnPartner.value,
-  },
-  {
-    id: 'cooking',
-    question: 'Wer ist mit Kochen dran?',
-    icon: 'i-lucide-cooking-pot',
-    partner: alternateChorePartner.value ?? choreTurnPartner.value,
-  },
-  {
-    id: 'bathroom',
-    question: 'Wer macht das Bad sauber?',
-    icon: 'i-lucide-bath',
-    partner: choreTurnPartner.value,
-  },
-  {
-    id: 'trash',
-    question: 'Wer bringt den Müll raus?',
-    icon: 'i-lucide-trash-2',
-    partner: alternateChorePartner.value ?? choreTurnPartner.value,
-  },
-])
 
 const relationshipUptime = computed(() => {
   if (!couple.value) {
@@ -258,126 +222,11 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
         <p class="text-white/60">{{ weddingCountdown.date }}</p>
       </UCard>
 
-      <UCard
-        class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl"
-        :ui="{ body: 'h-full p-5 sm:p-6' }"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="mb-2 text-xs font-extrabold uppercase text-primary">Wer macht den Kaffee?</p>
-            <h2 class="text-2xl font-black leading-none">Wer ist dran?</h2>
-          </div>
-          <UIcon name="i-lucide-coffee" class="mt-1 size-7 text-primary" />
-        </div>
-
-        <div class="mt-5 grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)] items-center gap-2">
-          <article
-            v-for="(partner, index) in [firstPartner, secondPartner]"
-            :key="partner?.id ?? `missing-partner-${index}`"
-            :class="[
-              'relative grid min-h-36 min-w-0 place-items-center gap-2 rounded-md border p-3 text-center transition',
-              partner?.id === choreTurnPartner?.id
-                ? 'border-primary/60 bg-primary/20 shadow-lg shadow-primary/15'
-                : 'border-primary/15 bg-black/15 opacity-70',
-            ]"
-          >
-            <UIcon
-              v-if="partner?.id === choreTurnPartner?.id"
-              name="i-lucide-crown"
-              class="absolute right-2 top-2 size-5 text-primary"
-            />
-            <UAvatar
-              :src="partner?.avatarUrl"
-              :text="partner?.avatarUrl ? undefined : partner?.avatarFallback"
-              :alt="partner?.name ?? 'Partner'"
-              size="xl"
-              :class="[
-                'ring-2',
-                partner?.id === choreTurnPartner?.id ? 'ring-primary/70' : 'ring-white/15',
-              ]"
-              loading="lazy"
-            />
-            <div class="min-w-0">
-              <p class="truncate text-lg font-black leading-tight">
-                {{ partner?.name ?? 'Offen' }}
-              </p>
-              <p
-                :class="[
-                  'text-xs font-extrabold uppercase',
-                  partner?.id === choreTurnPartner?.id ? 'text-primary' : 'text-white/45',
-                ]"
-              >
-                {{ partner?.id === choreTurnPartner?.id ? 'Dran' : 'Pause' }}
-              </p>
-            </div>
-          </article>
-
-          <div class="grid place-items-center">
-            <div
-              class="grid size-12 place-items-center rounded-full border border-primary/35 bg-black/25 shadow-inner shadow-primary/10"
-              aria-hidden="true"
-            >
-              <UIcon name="i-lucide-repeat-2" class="size-6 text-primary" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-5 grid gap-2">
-          <article
-            v-for="item in choreQuestions"
-            :key="item.id"
-            class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-primary/15 bg-black/15 px-3 py-2"
-          >
-            <UIcon :name="item.icon" class="size-5 text-primary" />
-            <p class="min-w-0 truncate text-sm font-semibold text-white/75">{{ item.question }}</p>
-            <div class="flex min-w-0 items-center gap-1.5">
-              <UIcon name="i-lucide-crown" class="size-4 text-primary" />
-              <span class="max-w-24 truncate text-sm font-black text-white">
-                {{ item.partner?.name ?? 'Offen' }}
-              </span>
-            </div>
-          </article>
-        </div>
-
-        <div
-          class="mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-primary/15 bg-black/15 px-3 py-3"
-        >
-          <div
-            :class="[
-              'flex min-w-0 items-center justify-end gap-1.5 text-sm font-black',
-              !isRightPartnerTurn && choreTurnPartner ? 'text-primary' : 'text-white/45',
-            ]"
-          >
-            <span class="truncate">{{ firstPartner?.name ?? 'Links' }}</span>
-            <UIcon
-              v-if="!isRightPartnerTurn && choreTurnPartner"
-              name="i-lucide-crown"
-              class="size-4 shrink-0"
-            />
-          </div>
-          <USwitch
-            :model-value="isRightPartnerTurn"
-            disabled
-            checked-icon="i-lucide-arrow-right"
-            unchecked-icon="i-lucide-arrow-left"
-            size="xl"
-            :aria-label="`Gewinner: ${choreTurnPartner?.name ?? 'offen'}`"
-          />
-          <div
-            :class="[
-              'flex min-w-0 items-center gap-1.5 text-sm font-black',
-              isRightPartnerTurn && choreTurnPartner ? 'text-primary' : 'text-white/45',
-            ]"
-          >
-            <UIcon
-              v-if="isRightPartnerTurn && choreTurnPartner"
-              name="i-lucide-crown"
-              class="size-4 shrink-0"
-            />
-            <span class="truncate">{{ secondPartner?.name ?? 'Rechts' }}</span>
-          </div>
-        </div>
-      </UCard>
+      <CoupleChoreTaskWidget
+        :partners="[firstPartner, secondPartner]"
+        :tasks="choreTasks"
+        :update-task="updateChoreTask"
+      />
 
       <UCard
         class="border-primary/15 bg-white/[0.075] shadow-2xl shadow-primary/10 backdrop-blur-xl md:col-span-2"

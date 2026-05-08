@@ -62,6 +62,21 @@ create table if not exists public.dashboard_widget (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.couple_chore_task (
+  id uuid primary key default extensions.gen_random_uuid(),
+  couple_id uuid not null references public.couple(id) on delete cascade,
+  title text not null check (length(trim(title)) > 0),
+  icon text not null default 'i-lucide-circle-help',
+  assigned_partner_id uuid,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint couple_chore_task_assigned_partner_fk
+    foreign key (couple_id, assigned_partner_id)
+    references public.partner (couple_id, id)
+    on delete set null (assigned_partner_id)
+);
+
 create table if not exists public.couple_alert (
   id uuid primary key default extensions.gen_random_uuid(),
   couple_id uuid not null references public.couple(id) on delete cascade,
@@ -86,6 +101,11 @@ create index if not exists couple_member_user_id_idx on public.couple_member (us
 create index if not exists couple_member_couple_id_idx on public.couple_member (couple_id);
 create index if not exists couple_member_partner_id_idx on public.couple_member (partner_id);
 create index if not exists dashboard_widget_couple_sort_idx on public.dashboard_widget (couple_id, sort_order);
+create index if not exists couple_chore_task_couple_sort_idx
+  on public.couple_chore_task (couple_id, sort_order);
+create index if not exists couple_chore_task_assigned_partner_idx
+  on public.couple_chore_task (assigned_partner_id)
+  where assigned_partner_id is not null;
 create index if not exists couple_alert_couple_active_created_idx
   on public.couple_alert (couple_id, active, created_at desc);
 create index if not exists couple_alert_triggered_by_partner_id_idx
@@ -452,6 +472,19 @@ begin
   )
   returning id into partner_b_id;
 
+  insert into public.couple_chore_task (
+    couple_id,
+    title,
+    icon,
+    assigned_partner_id,
+    sort_order
+  ) values
+    (new_couple_id, 'Wer macht den Kaffee?', 'i-lucide-coffee', partner_a_id, 1),
+    (new_couple_id, 'Wer geht mit dem Hund Lotte?', 'i-lucide-dog', partner_a_id, 2),
+    (new_couple_id, 'Wer ist mit Kochen dran?', 'i-lucide-cooking-pot', partner_b_id, 3),
+    (new_couple_id, 'Wer macht das Bad sauber?', 'i-lucide-bath', partner_a_id, 4),
+    (new_couple_id, 'Wer bringt den Müll raus?', 'i-lucide-trash-2', partner_b_id, 5);
+
   insert into public.dashboard_widget (
     couple_id,
     label,
@@ -656,6 +689,54 @@ begin
   if not found then
     raise exception 'Couple not found';
   end if;
+end;
+$$;
+
+create or replace function public.update_couple_chore_task(
+  p_task_id uuid,
+  p_title text,
+  p_assigned_partner_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_task public.couple_chore_task%rowtype;
+  next_title text := trim(coalesce(p_title, ''));
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select *
+    into target_task
+  from public.couple_chore_task task
+  where task.id = p_task_id;
+
+  if target_task.id is null or not public.is_couple_member(target_task.couple_id) then
+    raise exception 'Not allowed';
+  end if;
+
+  if next_title = '' then
+    raise exception 'Task title is required';
+  end if;
+
+  if p_assigned_partner_id is not null
+    and not exists (
+      select 1
+      from public.partner partner
+      where partner.id = p_assigned_partner_id
+        and partner.couple_id = target_task.couple_id
+    ) then
+    raise exception 'Selected partner does not belong to this couple';
+  end if;
+
+  update public.couple_chore_task
+    set title = next_title,
+        assigned_partner_id = p_assigned_partner_id,
+        updated_at = now()
+  where id = target_task.id;
 end;
 $$;
 
@@ -1086,6 +1167,7 @@ alter table public.couple enable row level security;
 alter table public.partner enable row level security;
 alter table public.couple_member enable row level security;
 alter table public.dashboard_widget enable row level security;
+alter table public.couple_chore_task enable row level security;
 alter table public.couple_alert enable row level security;
 
 create trigger enforce_couple_member_settings_update
@@ -1216,6 +1298,38 @@ on public.dashboard_widget for delete
 to authenticated
 using ((select private.is_app_admin()));
 
+create policy "Chore tasks visible to members and admins"
+on public.couple_chore_task for select
+to authenticated
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id));
+
+create policy "Members and admins update chore tasks"
+on public.couple_chore_task for update
+to authenticated
+using ((select private.is_app_admin()) or private.is_couple_member(couple_id))
+with check (
+  ((select private.is_app_admin()) or private.is_couple_member(couple_id))
+  and (
+    assigned_partner_id is null
+    or exists (
+      select 1
+      from public.partner partner
+      where partner.id = couple_chore_task.assigned_partner_id
+        and partner.couple_id = couple_chore_task.couple_id
+    )
+  )
+);
+
+create policy "App admins insert chore tasks"
+on public.couple_chore_task for insert
+to authenticated
+with check ((select private.is_app_admin()));
+
+create policy "App admins delete chore tasks"
+on public.couple_chore_task for delete
+to authenticated
+using ((select private.is_app_admin()));
+
 create policy "Alerts visible to members and admins"
 on public.couple_alert for select
 to authenticated
@@ -1324,6 +1438,7 @@ grant select, insert, update, delete on public.couple to authenticated;
 grant select, insert, update, delete on public.partner to authenticated;
 grant select, insert, update, delete on public.couple_member to authenticated;
 grant select, insert, update, delete on public.dashboard_widget to authenticated;
+grant select, insert, update, delete on public.couple_chore_task to authenticated;
 grant select, insert, update, delete on public.couple_alert to authenticated;
 
 grant execute on function private.is_app_admin() to authenticated;
@@ -1338,6 +1453,7 @@ grant execute on function public.update_partner_avatar(uuid, text) to authentica
 grant execute on function public.update_partner_hunger_level(uuid, text) to authenticated;
 grant execute on function public.update_partner_battery_level(uuid, text) to authenticated;
 grant execute on function public.update_couple_settings(uuid, date, date, uuid) to authenticated;
+grant execute on function public.update_couple_chore_task(uuid, text, uuid) to authenticated;
 grant execute on function public.admin_list_tenants() to authenticated;
 grant execute on function public.admin_create_tenant(text, text, text, date, date, text, text, text, text) to authenticated;
 grant execute on function public.admin_get_tenant(uuid) to authenticated;
@@ -1384,6 +1500,16 @@ begin
         and tablename = 'dashboard_widget'
     ) then
       alter publication supabase_realtime add table public.dashboard_widget;
+    end if;
+
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'couple_chore_task'
+    ) then
+      alter publication supabase_realtime add table public.couple_chore_task;
     end if;
 
     if not exists (
