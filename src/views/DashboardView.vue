@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import AlertFeed from '@/components/AlertFeed.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
+import PartnerHungerWidget from '@/components/PartnerHungerWidget.vue'
 import QrCodeCard from '@/components/QrCodeCard.vue'
 import RelationshipTimelineWidget from '@/components/RelationshipTimelineWidget.vue'
 import { useDashboardStore } from '@/composables/useDashboardStore'
@@ -460,6 +461,8 @@ watch([initialized, isAuthenticated], () => void loadDisplay())
           </article>
         </div>
       </UCard>
+
+      <PartnerHungerWidget :partners="[firstPartner, secondPartner]" />
 
       <section
         class="min-w-0 xl:col-span-3 xl:row-span-2 [&_.text-muted]:!text-white/60 [&_.rounded-lg]:h-full [&_.rounded-lg]:border-primary/15 [&_.rounded-lg]:bg-white/[0.075] [&_.rounded-lg]:text-white [&_.rounded-lg]:shadow-2xl [&_.rounded-lg]:shadow-primary/10 [&_.rounded-lg]:backdrop-blur-xl [&_.rounded-xl]:h-full [&_.rounded-xl]:border-primary/15 [&_.rounded-xl]:bg-white/[0.075] [&_.rounded-xl]:text-white [&_.rounded-xl]:shadow-2xl [&_.rounded-xl]:shadow-primary/10 [&_.rounded-xl]:backdrop-blur-xl"

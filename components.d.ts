@@ -18,6 +18,7 @@ declare module 'vue' {
     MetricTile: typeof import('./src/components/MetricTile.vue')['default']
     PartnerBatteryLevelPanel: typeof import('./src/components/PartnerBatteryLevelPanel.vue')['default']
     PartnerHungerLevelPanel: typeof import('./src/components/PartnerHungerLevelPanel.vue')['default']
+    PartnerHungerWidget: typeof import('./src/components/PartnerHungerWidget.vue')['default']
     QrCodeCard: typeof import('./src/components/QrCodeCard.vue')['default']
     RelationshipTimelineWidget: typeof import('./src/components/RelationshipTimelineWidget.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
