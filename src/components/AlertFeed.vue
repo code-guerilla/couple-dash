@@ -30,7 +30,7 @@ function alertCreator(alert: CoupleAlert) {
       <div
         v-for="loopIndex in 2"
         :key="loopIndex"
-        class="flex min-w-max shrink-0 items-stretch gap-3 pr-3"
+        class="flex min-w-full shrink-0 items-stretch justify-around gap-3 pr-3"
         :aria-hidden="loopIndex === 2"
       >
         <UAlert
@@ -65,11 +65,11 @@ function alertCreator(alert: CoupleAlert) {
 
 @keyframes alert-strip-marquee {
   from {
-    transform: translateX(-50%);
+    transform: translateX(0);
   }
 
   to {
-    transform: translateX(0);
+    transform: translateX(-50%);
   }
 }
 </style>
