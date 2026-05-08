@@ -75,6 +75,16 @@ const milestoneSummary = computed(() =>
       :items="items"
       class="w-full"
       color="primary"
+      size="xl"
+      :ui="{
+        item: 'pb-8 last:pb-0',
+        indicator: 'ring-2 ring-primary/40 shadow-lg shadow-primary/20',
+        separator: 'bg-primary/30',
+        date: 'text-sm font-semibold text-primary/80 uppercase tracking-wide',
+        title: 'text-xl font-black text-highlighted',
+        description: 'text-base text-muted leading-relaxed',
+        wrapper: 'gap-1.5',
+      }"
     />
     <p v-else class="text-sm text-muted">{{ widget.detail }}</p>
   </UCard>
