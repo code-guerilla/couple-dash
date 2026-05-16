@@ -51,7 +51,6 @@ declare module 'vue' {
     UPopover: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Popover.vue')['default']
     USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USkeleton: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Skeleton.vue')['default']
-    USwitch: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Switch.vue')['default']
     UTimeline: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Timeline.vue')['default']
     UTooltip: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tooltip.vue')['default']
   }
